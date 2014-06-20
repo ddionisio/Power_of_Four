@@ -32,7 +32,8 @@ public class PlatformerController : RigidBodyController {
     public float wallStickUpDelay = 0.2f; //how long to move up the wall once you stick
     public float wallStickUpForce = 60f; //slightly move up the wall
     public float wallStickForce = 40f; //move towards the wall
-    public float wallStickDownEaseDelay = 0.0f; //if not zero, ease into speed cap from 0
+    [Tooltip("Ease towards wallStickDownSpeedCap, make sure to start at 0 and end at 1.")]
+    public AnimationCurve wallStickDownEase;
     public float wallStickDownSpeedCap = 5.0f; //reduce speed upon sticking to wall if going downward, 'friction'
     public LayerMask wallStickInvalidMask; //layer masks that do not allow wall stick
 
@@ -287,10 +288,7 @@ public class PlatformerController : RigidBodyController {
     }
 
     float WallStickCurrentDownCap() {
-        if(wallStickDownEaseDelay <= 0.0f || Time.fixedTime - mWallStickLastTime >= wallStickDownEaseDelay)
-            return wallStickDownSpeedCap;
-
-        return Holoville.HOTween.Core.Easing.Sine.EaseIn(Time.fixedTime - mWallStickLastTime, 0.0f, wallStickDownSpeedCap, wallStickDownEaseDelay, 0, 0);
+        return wallStickDownEase.Evaluate(Time.fixedTime - mWallStickLastTime) * wallStickDownSpeedCap;
     }
 
     protected override void RefreshCollInfo() {

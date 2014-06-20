@@ -2,7 +2,8 @@
 using System.Collections;
 
 public class Player : EntityBase {
-    public const string clipHurt = "hurt";
+    public const string takeHurt = "hurt";
+
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
     public float hurtInvulDelay = 0.5f;
@@ -16,6 +17,7 @@ public class Player : EntityBase {
     private static Player mInstance;
     private PlayerStats mStats;
     private PlatformerController mCtrl;
+    private PlatformerAnimatorController mCtrlAnim;
     private SpriteColorBlink[] mBlinks;
     private float mDefaultCtrlMoveForce;
     private float mDefaultCtrlMoveMaxSpeed;
@@ -64,9 +66,18 @@ public class Player : EntityBase {
                 InputManager input = InputManager.instance;
                 if(input) {
                     if(mInputEnabled) {
+                        input.AddButtonCall(0, InputAction.Jump, OnInputJump);
+                        input.AddButtonCall(0, InputAction.Primary, OnInputPrimary);
+                        input.AddButtonCall(0, InputAction.Secondary, OnInputSecondary);
+                        input.AddButtonCall(0, InputAction.Previous, OnInputPowerPrev);
+                        input.AddButtonCall(0, InputAction.Next, OnInputPowerNext);
                     }
                     else {
-
+                        input.RemoveButtonCall(0, InputAction.Jump, OnInputJump);
+                        input.RemoveButtonCall(0, InputAction.Primary, OnInputPrimary);
+                        input.RemoveButtonCall(0, InputAction.Secondary, OnInputSecondary);
+                        input.RemoveButtonCall(0, InputAction.Previous, OnInputPowerPrev);
+                        input.RemoveButtonCall(0, InputAction.Next, OnInputPowerNext);
                     }
                 }
 
@@ -89,7 +100,7 @@ public class Player : EntityBase {
 
     public PlatformerController controller { get { return mCtrl; } }
 
-    //public PlatformerSpriteController controllerSprite { get { return mCtrlSpr; } }
+    public PlatformerAnimatorController controllerAnim { get { return mCtrlAnim; } }
 
     public PlayerStats stats { get { return mStats; } }
 
@@ -105,10 +116,10 @@ public class Player : EntityBase {
 
                 InputManager input = InputManager.instance;
                 if(input) {
-                    //input.AddButtonCall(0, InputAction.MenuCancel, OnInputPause);
+                    input.AddButtonCall(0, InputAction.MenuCancel, OnInputPause);
                 }
 
-                //mStats.isInvul = false;
+                mStats.isInvul = false;
 
                 mCtrl.moveSideLock = false;
                 break;
@@ -121,6 +132,18 @@ public class Player : EntityBase {
 
             case EntityState.Hurt:
                 Blink(hurtInvulDelay);
+
+                //attempt to end sliding
+                SetSlide(false);
+                if(!mSliding) {
+                    inputEnabled = false;
+
+                    //push slightly
+                    StartCoroutine(DoHurtForce(mStats.lastDamageNormal));
+
+                    //hurt delay
+                    StartCoroutine(DoHurt());
+                }
                 break;
 
             case EntityState.Dead:
@@ -138,13 +161,13 @@ public class Player : EntityBase {
 
                 InputManager input = InputManager.instance;
                 if(input) {
-                    //input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
+                    input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
                 }
                 //
 
                 //spawn death thing
 
-                //StartCoroutine(DoDeathFinishDelay());
+                StartCoroutine(DoDeathFinishDelay());
                 break;
 
             case EntityState.Lock:
@@ -152,7 +175,7 @@ public class Player : EntityBase {
                 //if(currentWeapon)
                     //currentWeapon.FireStop();
 
-                //LockControls();
+                LockControls();
                 break;
 
             case EntityState.Victory:
@@ -161,7 +184,7 @@ public class Player : EntityBase {
                     //currentWeapon.FireStop();
 
                 currentWeaponIndex = -1;
-                //LockControls();
+                LockControls();
                 //mCtrlSpr.PlayOverrideClip("victory");
                 break;
 
@@ -171,7 +194,7 @@ public class Player : EntityBase {
                     //currentWeapon.FireStop();
 
                 currentWeaponIndex = -1;
-                //LockControls();
+                LockControls();
 
                 //save?
                 break;
@@ -182,7 +205,7 @@ public class Player : EntityBase {
                     //currentWeapon.FireStop();
 
                 currentWeaponIndex = -1;
-                //LockControls();
+                LockControls();
                 break;
 
             case EntityState.Invalid:
@@ -199,12 +222,12 @@ public class Player : EntityBase {
 
         InputManager input = InputManager.instance;
         if(input) {
-            //input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
+            input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
         }
         //
 
         Blink(0.0f);
-        //mStats.isInvul = true;
+        mStats.isInvul = true;
 
         mCtrl.moveSideLock = true;
         mCtrl.moveSide = 0.0f;
@@ -216,7 +239,7 @@ public class Player : EntityBase {
             blinker.enabled = blink;
         }
 
-        //mStats.isInvul = blink;
+        mStats.isInvul = blink;
     }
 
     protected override void OnDespawned() {
@@ -233,7 +256,7 @@ public class Player : EntityBase {
 
         InputManager input = InputManager.instance;
         if(input) {
-            //input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
+            input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
         }
 
         base.OnDestroy();
@@ -243,7 +266,7 @@ public class Player : EntityBase {
         state = (int)EntityState.Normal;
 
         if(SceneState.instance.GetGlobalValue("cheat") > 0) {
-            //stats.damageReduction = 1.0f;
+            stats.damageReduction = 1.0f;
         }
     }
 
@@ -260,19 +283,18 @@ public class Player : EntityBase {
         base.Awake();
 
         //initialize variables
-        //InputManager.instance.AddButtonCall(0, InputAction.MenuCancel, OnInputPause);
+        InputManager.instance.AddButtonCall(0, InputAction.MenuCancel, OnInputPause);
 
         mCtrl = GetComponent<PlatformerController>();
         mCtrl.moveInputX = InputAction.MoveX;
         mCtrl.moveInputY = InputAction.MoveY;
-        //mCtrl.collisionEnterCallback += OnRigidbodyCollisionEnter;
-        //mCtrl.landCallback += OnLand;
+        mCtrl.collisionEnterCallback += OnRigidbodyCollisionEnter;
+        mCtrl.landCallback += OnLand;
 
         mDefaultCtrlMoveMaxSpeed = mCtrl.moveMaxSpeed;
         mDefaultCtrlMoveForce = mCtrl.moveForce;
 
-        //mCtrlSpr = GetComponent<PlatformerSpriteController>();
-        //mCtrlSpr.clipFinishCallback += OnSpriteCtrlOneTimeClipEnd;
+        mCtrlAnim = GetComponent<PlatformerAnimatorController>();
 
         mCapsuleColl = collider as CapsuleCollider;
         mDefaultColliderCenter = mCapsuleColl.center;
@@ -330,12 +352,12 @@ public class Player : EntityBase {
 
     void OnStatsHPChange(Stats stat, float delta) {
         if(delta < 0.0f) {
-            /*if(stat.curHP <= 0.0f) {
+            if(stat.curHP <= 0.0f) {
                 state = (int)EntityState.Dead;
             }
             else {
                 state = (int)EntityState.Hurt;
-            }*/
+            }
 
             //HUD.instance.barHP.current = Mathf.CeilToInt(stat.curHP);
         }
@@ -369,7 +391,7 @@ public class Player : EntityBase {
 
     #region Input
 
-    void OnInputFire(InputManager.Info dat) {
+    void OnInputPrimary(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
             if(mSpecialTriggerFSM) {
                 //if(currentWeapon)
@@ -392,6 +414,13 @@ public class Player : EntityBase {
             //if(!mFireFSM && currentWeapon) {
                 //currentWeapon.FireStop();
             //}
+        }
+    }
+
+    void OnInputSecondary(InputManager.Info dat) {
+        if(dat.state == InputManager.State.Pressed) {
+        }
+        else if(dat.state == InputManager.State.Released) {
         }
     }
 
@@ -517,6 +546,20 @@ public class Player : EntityBase {
         mHurtActive = false;
     }
 
+    IEnumerator DoHurt() {
+        //hurtin'
+        mCtrlAnim.PlayOverrideClip(takeHurt);
+
+        yield return new WaitForSeconds(hurtDelay);
+
+        if(mCtrlAnim.overrideTakeName == takeHurt)
+            mCtrlAnim.StopOverrideClip();
+
+        //done hurtin'
+        if(state == (int)EntityState.Hurt)
+            state = (int)EntityState.Normal;
+    }
+
     public void Pause(bool pause) {
         if(pause) {
             mPauseCounter++;
@@ -556,9 +599,9 @@ public class Player : EntityBase {
                 mCtrl.moveMaxSpeed = slideSpeedMax;
                 mCtrl.moveForce = slideForce;
                 mCtrl.moveSideLock = true;
-                //mCtrl.moveSide = mCtrlSpr.isLeft ? -1.0f : 1.0f;
+                mCtrl.moveSide = mCtrlAnim.isLeft ? -1.0f : 1.0f;
 
-                //mCtrlSpr.state = PlatformerSpriteController.State.Slide;
+                mCtrlAnim.state = PlatformerAnimatorController.State.Slide;
 
                 //sfxSlide.Play();
             } else {
@@ -588,7 +631,7 @@ public class Player : EntityBase {
                         }
                     }
 
-                    //mCtrlSpr.state = PlatformerSpriteController.State.None;
+                    mCtrlAnim.state = PlatformerAnimatorController.State.None;
 
                     //Vector3 pos = transform.position;
                     //pos.y += (mDefaultColliderHeight - slideHeight) * 0.5f - 0.1f;
@@ -606,7 +649,7 @@ public class Player : EntityBase {
     bool CanStand() {
         const float ofs = 0.2f;
 
-        float r = mCapsuleColl.radius - 0.05f;
+        float r = mCapsuleColl.radius - mCapsuleColl.radius*0.25f;
 
         Vector3 c = transform.position + mDefaultColliderCenter;
         Vector3 u = new Vector3(c.x, c.y + (mDefaultColliderHeight * 0.5f - mCapsuleColl.radius) + ofs, c.z);
