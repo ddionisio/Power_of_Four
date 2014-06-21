@@ -14,6 +14,8 @@ public class Player : EntityBase {
     public float slideHeight = 0.79f;
     public LayerMask solidMask; //use for standing up, etc.
 
+    public Buddy[] buddies;
+
     private static Player mInstance;
     private PlayerStats mStats;
     private PlatformerController mCtrl;
