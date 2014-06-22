@@ -4,6 +4,12 @@ using System.Collections;
 public class Player : EntityBase {
     public const string takeHurt = "hurt";
 
+    public enum LookDir {
+        Front,
+        Up,
+        Down
+    }
+
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
     public float hurtInvulDelay = 0.5f;
@@ -13,6 +19,15 @@ public class Player : EntityBase {
     public float slideDelay;
     public float slideHeight = 0.79f;
     public LayerMask solidMask; //use for standing up, etc.
+
+    public Transform look;
+
+    public Transform cameraPoint;
+    public float cameraPointWallCheckDelay = 0.2f;
+    public float cameraPointRevertDelay = 2.0f;
+    
+    public Transform buddyFollowPoint;
+    public Transform buddyFirePoint;
 
     public Buddy[] buddies;
 
@@ -25,31 +40,51 @@ public class Player : EntityBase {
     private float mDefaultCtrlMoveMaxSpeed;
     private Vector3 mDefaultColliderCenter;
     private float mDefaultColliderHeight;
+    private Vector3 mDefaultCameraPointLPos;
     private CapsuleCollider mCapsuleColl;
     private bool mInputEnabled;
     private bool mSliding;
     private float mSlidingLastTime;
     private bool mHurtActive;
-    private int mCurWeaponInd = -1;
+    private int mCurBuddyInd = -1;
     private int mPauseCounter;
     private bool mAllowPauseTime = true;
     private PlayMakerFSM mSpecialTriggerFSM; //special trigger activated
-
+    private LookDir mCurLook = LookDir.Front;
+    
     public static Player instance { get { return mInstance; } }
 
-    public int currentWeaponIndex {
-        get { return mCurWeaponInd; }
+    public int currentBuddyIndex {
+        get { return mCurBuddyInd; }
         set {
+            if(mCurBuddyInd != value && (value == -1 || PlayerSave.BuddyIsUnlock(value))) {
+                int prevBuddyInd = mCurBuddyInd;
+                mCurBuddyInd = value;
+
+                //deactivate previous
+                if(prevBuddyInd >= 0)
+                    buddies[prevBuddyInd].Activate(false);
+
+                //activate new one
+                if(mCurBuddyInd >= 0) {
+                    buddies[mCurBuddyInd].Activate(true);
+
+                    //change hud elements
+                }
+                else {
+                    //remove hud elements
+                }
+            }
         }
     }
 
-    /*public Weapon currentWeapon {
+    public Buddy currentBuddy {
         get {
-            if(mCurWeaponInd >= 0)
-                return weapons[mCurWeaponInd];
+            if(mCurBuddyInd >= 0)
+                return buddies[mCurBuddyInd];
             return null;
         }
-    }*/
+    }
 
     public float controllerDefaultMaxSpeed {
         get { return mDefaultCtrlMoveMaxSpeed; }
@@ -106,6 +141,25 @@ public class Player : EntityBase {
 
     public PlayerStats stats { get { return mStats; } }
 
+    public LookDir lookDir {
+        get { return mCurLook; }
+        set {
+            if(mCurLook != value) {
+                mCurLook = value;
+                switch(mCurLook) {
+                    case LookDir.Front:
+                        look.rotation = Quaternion.identity;
+                        break;
+                    case LookDir.Up:
+                        look.rotation = Quaternion.Euler(0, 0, 90);
+                        break;
+                    case LookDir.Down:
+                        look.rotation = Quaternion.Euler(0, 0, -90);
+                        break;
+                }
+            }
+        }
+    }
 
     protected override void StateChanged() {
         switch((EntityState)prevState) {
@@ -135,6 +189,9 @@ public class Player : EntityBase {
             case EntityState.Hurt:
                 Blink(hurtInvulDelay);
 
+                if(currentBuddy)
+                    currentBuddy.FireStop();
+
                 //attempt to end sliding
                 SetSlide(false);
                 if(!mSliding) {
@@ -150,6 +207,9 @@ public class Player : EntityBase {
 
             case EntityState.Dead:
                 UIModalManager.instance.ModalCloseAll();
+
+                if(currentBuddy)
+                    currentBuddy.FireStop();
 
                 SetSlide(false);
                     
@@ -174,28 +234,31 @@ public class Player : EntityBase {
 
             case EntityState.Lock:
                 UIModalManager.instance.ModalCloseAll();
-                //if(currentWeapon)
-                    //currentWeapon.FireStop();
+
+                if(currentBuddy)
+                    currentBuddy.FireStop();
 
                 LockControls();
                 break;
 
             case EntityState.Victory:
                 UIModalManager.instance.ModalCloseAll();
-                //if(currentWeapon)
-                    //currentWeapon.FireStop();
 
-                currentWeaponIndex = -1;
+                if(currentBuddy)
+                    currentBuddy.FireStop();
+
+                currentBuddyIndex = -1;
                 LockControls();
                 //mCtrlSpr.PlayOverrideClip("victory");
                 break;
 
             case EntityState.Final:
                 UIModalManager.instance.ModalCloseAll();
-                //if(currentWeapon)
-                    //currentWeapon.FireStop();
 
-                currentWeaponIndex = -1;
+                if(currentBuddy)
+                    currentBuddy.FireStop();
+
+                currentBuddyIndex = -1;
                 LockControls();
 
                 //save?
@@ -203,10 +266,11 @@ public class Player : EntityBase {
 
             case EntityState.Exit:
                 UIModalManager.instance.ModalCloseAll();
-                //if(currentWeapon)
-                    //currentWeapon.FireStop();
 
-                currentWeaponIndex = -1;
+                if(currentBuddy)
+                    currentBuddy.FireStop();
+
+                currentBuddyIndex = -1;
                 LockControls();
                 break;
 
@@ -253,6 +317,12 @@ public class Player : EntityBase {
     protected override void OnDestroy() {
         mInstance = null;
 
+        if(UIModalManager.instance)
+            UIModalManager.instance.activeCallback -= OnUIModalActive;
+
+        if(SceneManager.instance)
+            SceneManager.instance.sceneChangeCallback -= OnSceneChange;
+
         //dealloc here
         inputEnabled = false;
 
@@ -276,13 +346,19 @@ public class Player : EntityBase {
         //initialize some things
 
         //start ai, player control, etc
-        currentWeaponIndex = 0;
+        currentBuddyIndex = PlayerSave.BuddySelected();
+
+        StartCoroutine(DoCameraPointWallCheck());
     }
 
     protected override void Awake() {
         mInstance = this;
 
         base.Awake();
+
+        //setup callbacks
+        UIModalManager.instance.activeCallback += OnUIModalActive;
+        SceneManager.instance.sceneChangeCallback += OnSceneChange;
 
         //initialize variables
         InputManager.instance.AddButtonCall(0, InputAction.MenuCancel, OnInputPause);
@@ -302,11 +378,20 @@ public class Player : EntityBase {
         mDefaultColliderCenter = mCapsuleColl.center;
         mDefaultColliderHeight = mCapsuleColl.height;
 
+        mDefaultCameraPointLPos = cameraPoint.localPosition;
+
         mStats = GetComponent<PlayerStats>();
 
         mBlinks = GetComponentsInChildren<SpriteColorBlink>(true);
         foreach(SpriteColorBlink blinker in mBlinks) {
             blinker.enabled = false;
+        }
+
+        for(int i = 0; i < buddies.Length; i++) {
+            Buddy buddy = buddies[i];
+            buddy.level = PlayerSave.BuddyLevel(i);
+            buddy.followPoint = buddyFollowPoint;
+            buddy.firePoint = buddyFirePoint;
         }
     }
 
@@ -333,9 +418,9 @@ public class Player : EntityBase {
     }
 
     void Update() {
-        if(mSliding) {
-            InputManager input = InputManager.instance;
+        InputManager input = InputManager.instance;
 
+        if(mSliding) {
             float inpX = input.GetAxis(0, InputAction.MoveX);
             if(inpX < -0.1f)
                 mCtrl.moveSide = -1.0f;
@@ -347,6 +432,16 @@ public class Player : EntityBase {
             if(Time.time - mSlidingLastTime >= slideDelay) {
                 SetSlide(false);
             }
+        }
+        else {
+            float inpY = input.GetAxis(0, InputAction.MoveY);
+
+            if(inpY < -0.1f)
+                lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
+            else if(inpY > 0.1f)
+                lookDir = LookDir.Up;
+            else
+                lookDir = LookDir.Front;
         }
     }
 
@@ -396,26 +491,17 @@ public class Player : EntityBase {
     void OnInputPrimary(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
             if(mSpecialTriggerFSM) {
-                //if(currentWeapon)
-                    //currentWeapon.FireStop();
+                if(currentBuddy)
+                    currentBuddy.FireStop();
 
                 mSpecialTriggerFSM.SendEvent(EntityEvent.Interact);
             }
-            /*else if(currentWeapon) {
-                if(currentWeapon.allowSlide || !mSliding) {
-                    if(currentWeapon.hasEnergy) {
-                        currentWeapon.FireStart();
-                    }
-                    else {
-                        HUD.instance.barEnergy.Flash(true);
-                    }
-                }
-            }*/
+            else if(currentBuddy)
+                currentBuddy.FireStart();
         }
         else if(dat.state == InputManager.State.Released) {
-            //if(!mFireFSM && currentWeapon) {
-                //currentWeapon.FireStop();
-            //}
+            if(!mSpecialTriggerFSM && currentBuddy)
+                currentBuddy.FireStop();
         }
     }
 
@@ -428,29 +514,29 @@ public class Player : EntityBase {
 
     void OnInputPowerNext(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
-            /*for(int i = 0, max = weapons.Length, toWeaponInd = currentWeaponIndex + 1; i < max; i++, toWeaponInd++) {
-                if(toWeaponInd >= weapons.Length)
-                    toWeaponInd = 0;
+            for(int i = 0, max = buddies.Length, toBuddyInd = currentBuddyIndex + 1; i < max; i++, toBuddyInd++) {
+                if(toBuddyInd >= buddies.Length)
+                    toBuddyInd = 0;
 
-                if(weapons[toWeaponInd] && SlotInfo.WeaponIsUnlock(toWeaponInd)) {
-                    currentWeaponIndex = toWeaponInd;
+                if(buddies[toBuddyInd] && PlayerSave.BuddyIsUnlock(toBuddyInd)) {
+                    currentBuddyIndex = toBuddyInd;
                     break;
                 }
-            }*/
+            }
         }
     }
 
     void OnInputPowerPrev(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
-            /*for(int i = 0, max = weapons.Length, toWeaponInd = currentWeaponIndex - 1; i < max; i++, toWeaponInd--) {
-                if(toWeaponInd < 0)
-                    toWeaponInd = weapons.Length - 1;
+            for(int i = 0, max = buddies.Length, toBuddyInd = currentBuddyIndex - 1; i < max; i++, toBuddyInd--) {
+                if(toBuddyInd < 0)
+                    toBuddyInd = buddies.Length - 1;
 
-                if(weapons[toWeaponInd] && SlotInfo.WeaponIsUnlock(toWeaponInd)) {
-                    currentWeaponIndex = toWeaponInd;
+                if(buddies[toBuddyInd] && PlayerSave.BuddyIsUnlock(toBuddyInd)) {
+                    currentBuddyIndex = toBuddyInd;
                     break;
                 }
-            }*/
+            }
         }
     }
 
@@ -491,10 +577,8 @@ public class Player : EntityBase {
 
     void OnInputSlide(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
-            if(!mSliding) {
-                //Weapon curWpn = weapons[mCurWeaponInd];
-                //if((!curWpn.isFireActive || curWpn.allowSlide) && mCtrl.isGrounded)
-                    SetSlide(true);
+            if(!mSliding && mCtrl.isGrounded) {
+                SetSlide(true);    
             }
         }
     }
@@ -512,15 +596,11 @@ public class Player : EntityBase {
     #endregion
 
     void OnSuddenDeath() {
-        //stats.curHP = 0;
+        stats.curHP = 0;
     }
 
-    void OnUIModalActive() {
-        Pause(true);
-    }
-
-    void OnUIModalInactive() {
-        Pause(false);
+    void OnUIModalActive(bool a) {
+        Pause(a);
     }
 
     IEnumerator DoHurtForce(Vector3 normal) {
@@ -660,7 +740,7 @@ public class Player : EntityBase {
         return !Physics.CheckCapsule(u, d, r, solidMask);
     }
 
-    void SceneChange(string nextScene) {
+    void OnSceneChange(string nextScene) {
         //save stuff
     }
 
@@ -668,6 +748,30 @@ public class Player : EntityBase {
         yield return new WaitForSeconds(deathFinishDelay);
 
         SceneManager.instance.Reload();
+    }
+
+    IEnumerator DoCameraPointWallCheck() {
+        WaitForSeconds waitCheck = new WaitForSeconds(cameraPointWallCheckDelay);
+        
+        float lastCheckTime = Time.fixedTime;
+        bool isCameraPointSet = false;
+
+        while(true) {
+            if(isCameraPointSet && Time.fixedTime - lastCheckTime >= cameraPointRevertDelay) {
+                cameraPoint.localPosition = mDefaultCameraPointLPos;
+                isCameraPointSet = false;
+            }
+
+            if(mCtrl.isWallStick) {
+                lastCheckTime = Time.fixedTime;
+                if(!isCameraPointSet) {
+                    cameraPoint.localPosition = Vector3.zero;
+                    isCameraPointSet = true;
+                }
+            }
+
+            yield return waitCheck;
+        }
     }
 
     void OnRigidbodyCollisionEnter(RigidBodyController controller, Collision col) {

@@ -31,7 +31,7 @@ public class CameraController : MonoBehaviour {
         set {
             if(mAttach != value) {
                 mAttach = value;
-                mCurVel = Vector3.zero;
+                //mCurVel = Vector3.zero;
             }
         }
     }
@@ -40,7 +40,7 @@ public class CameraController : MonoBehaviour {
         get { return mBounds; }
         set {
             mBounds = value;
-            mCurVel = Vector3.zero;
+            //mCurVel = Vector3.zero;
         }
     }
 
@@ -86,6 +86,7 @@ public class CameraController : MonoBehaviour {
 
         Vector3 curPos = transform.position;
         Vector3 dest = mAttach ? mAttach.collider ? mAttach.collider.bounds.center : mAttach.position : curPos;
+        dest.z = curPos.z;
 
         //apply bounds
         switch(mode) {

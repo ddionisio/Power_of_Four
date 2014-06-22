@@ -2,16 +2,13 @@
 using System.Collections;
 
 public abstract class Buddy : MonoBehaviour {
-    
-    public Transform followPoint;
-    public Transform firePoint;
-
+        
     public float fireRate;
 
-    public string takeEnter;
-    public string takeExit;
-    public string takeIdle;
-    public string takeFiring;
+    public string takeEnter = "enter";
+    public string takeExit = "exit";
+    public string takeIdle = "idle";
+    public string takeFiring = "fire";
 
     public string iconSpriteRef;
     public string labelTextRef;
@@ -30,6 +27,9 @@ public abstract class Buddy : MonoBehaviour {
     private IEnumerator mFiringEnter;
     private IEnumerator mFiringExit;
 
+    private Transform mFollowPoint;
+    private Transform mFirePoint;
+
     private bool mStarted = false;
     private bool mStartSetActivate = false;
     private bool mStartActivate = false;
@@ -47,7 +47,9 @@ public abstract class Buddy : MonoBehaviour {
     public TransFollow follow { get { return mFollow; } }
     public AnimatorData anim { get { return mAnim; } }
     public bool isFiring { get { return mFiring != null; } }
-        
+    public Transform followPoint { get { return mFollowPoint; } set { mFollowPoint = value; } }
+    public Transform firePoint { get { return mFirePoint; } set { mFirePoint = value; } }
+    
     /// <summary>
     /// Call with act=true to make this buddy your active weapon.  Call with act=false when switching buddy.
     /// </summary>
@@ -110,7 +112,10 @@ public abstract class Buddy : MonoBehaviour {
             if(playIdle && mTakeIdleInd != -1)
                 mAnim.Play(mTakeIdleInd);
 
-            mFollow.target = followPoint;
+            mFollow.target = mFollowPoint;
+
+            transform.localScale = Vector3.one;
+            transform.rotation = Quaternion.identity;
 
             OnFireStop();
         }
@@ -120,6 +125,9 @@ public abstract class Buddy : MonoBehaviour {
         if(mFiring != null) { StopCoroutine(mFiring); mFiring = null; }
         if(mFiringEnter != null) { StopCoroutine(mFiringEnter); mFiringEnter = null; }
         if(mFiringExit != null) { StopCoroutine(mFiringExit); mFiringExit = null; }
+
+        transform.localScale = Vector3.one;
+        transform.rotation = Quaternion.identity;
     }
 
     void Awake() {
@@ -161,12 +169,10 @@ public abstract class Buddy : MonoBehaviour {
 
             //keep our position to fire pos
             Vector3 pos = transform.position;
-            Vector3 newPos = firePoint.position; newPos.z = pos.z;
+            Vector3 newPos = mFirePoint.position; newPos.z = pos.z;
 
-            Vector3 s = transform.localScale;
-            Vector3 newS = firePoint.lossyScale;
-
-            transform.localScale = newS;
+            transform.localScale = mFirePoint.lossyScale;
+            transform.rotation = mFirePoint.rotation;
             transform.position = newPos;
 
             yield return wait;
@@ -174,12 +180,14 @@ public abstract class Buddy : MonoBehaviour {
     }
 
     IEnumerator DoFireEnter() {
-        mFollow.target = followPoint;
+        mFollow.target = mFollowPoint;
         mFollow.SnapToTarget();
 
-        if(mTakeEnterInd != -1) {
-            WaitForFixedUpdate wait = new WaitForFixedUpdate();
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
+        yield return wait;
+
+        if(mTakeEnterInd != -1) {
             //make sure it's not looped!
             mAnim.Play(mTakeEnterInd);
 
@@ -189,15 +197,19 @@ public abstract class Buddy : MonoBehaviour {
 
         mFiringEnter = null;
 
+        if(mTakeIdleInd != -1)
+            mAnim.Play(mTakeIdleInd);
+
         OnEnter();
     }
 
     IEnumerator DoFireExit() {
         mFollow.target = null;
 
-        if(mTakeEnterInd != -1) {
-            WaitForFixedUpdate wait = new WaitForFixedUpdate();
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
+        yield return wait;
 
+        if(mTakeExitInd != -1) {
             //make sure it's not looped!
             mAnim.Play(mTakeExitInd);
 

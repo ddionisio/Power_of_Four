@@ -186,6 +186,11 @@ public class PlatformerController : RigidBodyController {
         //mJumpLastTime = Time.fixedTime;
     }
 
+    public bool CanWallStick(Vector3 up, Vector3 wallNormal) {
+        float a = Vector3.Angle(up, wallNormal);
+        return a >= 90.0f - wallStickAngleOfs && a <= 90.0f + wallStickAngleOfs;
+    }
+
     /// <summary>
     /// Call this for manual input jumping
     /// </summary>
@@ -360,8 +365,7 @@ public class PlatformerController : RigidBodyController {
                     for(int i = 0; i < mCollCount; i++) {
                         CollideInfo inf = mColls[i];
                         if(inf.flag == CollisionFlags.Sides && (wallStickInvalidMask == 0 || ((1<<inf.collider.gameObject.layer) & wallStickInvalidMask) == 0)) {
-                            float a = Vector3.Angle(up, inf.normal);
-                            if(a >= 90.0f - wallStickAngleOfs && a <= 90.0f + wallStickAngleOfs) {
+                            if(CanWallStick(up, inf.normal)) {
                                 //wallStickForce
                                 mWallStickCollInfo = inf;
                                 mWallStickSide = M8.MathUtil.CheckSide(mWallStickCollInfo.normal, dirHolder.up);
