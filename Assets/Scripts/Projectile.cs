@@ -51,13 +51,14 @@ public class Projectile : EntityBase {
     public float seekTurnAngleCap = 360.0f;
     public bool decayEnabled = true;
     public float decayDelay;
-    public bool releaseOnDie;
+    public bool releaseOnDie = true;
     public float dieDelay;
     public bool dieBlink;
     public bool dieDisablePhysics = true;
     public bool releaseOnSleep;
     public LayerMask explodeMask;
     public float explodeForce;
+    public float explodeUpwardMod;
     public Vector3 explodeOfs;
     public Transform explodeOfsTarget;
     public float explodeRadius;
@@ -72,6 +73,7 @@ public class Projectile : EntityBase {
     public LayerMask EndByContactMask; //if not 0, use death contact mask to determine if we die based on layer
     public string deathSpawnGroup;
     public string deathSpawnType;
+    public Vector3 deathSpawnOfs;
     public bool autoDisableCollision = true; //when not active, disable collision
     public int damageExpireCount = -1; //the number of damage dealt for it to die, -1 for infinite
 
@@ -348,7 +350,7 @@ public class Projectile : EntityBase {
 
     void Die() {
         if(!string.IsNullOrEmpty(deathSpawnGroup) && !string.IsNullOrEmpty(deathSpawnType)) {
-            Vector2 p = (explodeOfsTarget ? explodeOfsTarget : transform).localToWorldMatrix.MultiplyPoint(explodeOfs);//explodeOnDeath ? transform.localToWorldMatrix.MultiplyPoint(explodeOfs) : transform.position;
+            Vector2 p = transform.localToWorldMatrix.MultiplyPoint(deathSpawnOfs);
 
             PoolController.Spawn(deathSpawnGroup, deathSpawnType, deathSpawnType, null, p, Quaternion.identity);
         }
@@ -747,6 +749,13 @@ public class Projectile : EntityBase {
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere((explodeOfsTarget ? explodeOfsTarget : transform).localToWorldMatrix.MultiplyPoint(explodeOfs), explodeRadius);
         }
+
+        if(!string.IsNullOrEmpty(deathSpawnGroup) && !string.IsNullOrEmpty(deathSpawnType)) {
+            Color c = Color.gray; c.a = 0.5f;
+            Gizmos.color = c;
+            Vector2 p = transform.localToWorldMatrix.MultiplyPoint(deathSpawnOfs);
+            Gizmos.DrawWireSphere(p, 0.1f);
+        }
     }
 
     private void DoExplode() {
@@ -760,11 +769,12 @@ public class Projectile : EntityBase {
         foreach(Collider col in cols) {
             if(col != null && col.rigidbody != null && CheckTag(col.gameObject.tag)) {
                 //hurt?
-                col.rigidbody.AddExplosionForce(explodeForce, pos, explodeRadius, 0.0f, ForceMode.Force);
+                col.rigidbody.AddExplosionForce(explodeForce, pos, explodeRadius, explodeUpwardMod, ForceMode.Force);
 
                 //float distSqr = (col.transform.position - pos).sqrMagnitude;
 
-                mDamage.CallDamageTo(col.gameObject, pos, (col.bounds.center - pos).normalized);
+                if(mDamage)
+                    mDamage.CallDamageTo(col.gameObject, pos, (col.bounds.center - pos).normalized);
             }
         }
     }

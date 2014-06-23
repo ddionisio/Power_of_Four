@@ -13,6 +13,7 @@ public class CameraController : MonoBehaviour {
     public float delay = 0.1f; //reposition delay
     public float transitionDelay = 0.5f;
     public float transitionExpire = 1.0f;
+    public float pixelSizeDistance = 2000.0f; //used for perspective camera bounds
 
     private static CameraController mInstance;
 
@@ -117,7 +118,15 @@ public class CameraController : MonoBehaviour {
 
     void ApplyBounds(ref Vector3 pos) {
         if(bounds.size.x > 0.0f && bounds.size.y > 0.0f) {
+            //convert bounds to pixels, then reconvert to actual pixel size
             Rect screen = mCam.screenExtent;
+
+            float pixelPerMeter = mCam.getPixelSize(pixelSizeDistance);//Mathf.Abs(transform.position.z - mCam.transform.position.z));
+            if(pixelPerMeter > 0.0f) {
+                Vector2 s = new Vector3(screen.size.x*mCam.pixelPerMeter, screen.size.y*mCam.pixelPerMeter);
+                s /= pixelPerMeter;
+                screen.size = s;
+            }
 
             if(pos.x - screen.width * 0.5f < bounds.min.x)
                 pos.x = bounds.min.x + screen.width * 0.5f;

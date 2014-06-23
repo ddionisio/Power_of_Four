@@ -2,8 +2,13 @@
 using System.Collections;
 
 public abstract class Buddy : MonoBehaviour {
+    public const string projGrp = "playerProj";
         
     public float fireRate;
+    public LayerMask fireWallCheck;
+
+    public float idleFaceXMin = 0.15f;
+    public float idleFaceXDelay = 0.25f;
 
     public string takeEnter = "enter";
     public string takeExit = "exit";
@@ -23,9 +28,7 @@ public abstract class Buddy : MonoBehaviour {
     private TransFollow mFollow;
     private AnimatorData mAnim;
 
-    private IEnumerator mFiring;
-    private IEnumerator mFiringEnter;
-    private IEnumerator mFiringExit;
+    private IEnumerator mCurAct;
 
     private Transform mFollowPoint;
     private Transform mFirePoint;
@@ -33,6 +36,8 @@ public abstract class Buddy : MonoBehaviour {
     private bool mStarted = false;
     private bool mStartSetActivate = false;
     private bool mStartActivate = false;
+    private bool mIsFiring = false;
+    private float mLastFireTime;
 
     public int level {
         get { return mLevel; }
@@ -46,10 +51,29 @@ public abstract class Buddy : MonoBehaviour {
 
     public TransFollow follow { get { return mFollow; } }
     public AnimatorData anim { get { return mAnim; } }
-    public bool isFiring { get { return mFiring != null; } }
+    public bool isFiring { get { return mIsFiring; } }
     public Transform followPoint { get { return mFollowPoint; } set { mFollowPoint = value; } }
     public Transform firePoint { get { return mFirePoint; } set { mFirePoint = value; } }
-    
+
+    /// <summary>
+    /// Check to see if we can fire based on player's location
+    /// </summary>
+    public bool canFire {
+        get {
+            if(fireWallCheck == 0) return true;
+
+            Vector3 playerPos = Player.instance.transform.position;
+            Vector3 firePos = firePoint.position; firePos.z = playerPos.z;
+            Vector3 dir = firePos - playerPos;
+            float d = dir.magnitude;
+            if(d > 0.0f) {
+                dir /= d;
+                return !Physics.Raycast(playerPos, dir, d, fireWallCheck);
+            }
+            return false;
+        }
+    }
+
     /// <summary>
     /// Call with act=true to make this buddy your active weapon.  Call with act=false when switching buddy.
     /// </summary>
@@ -58,26 +82,26 @@ public abstract class Buddy : MonoBehaviour {
         if(mStarted) {
             if(act) {
                 if(gameObject.activeSelf) {
-                    if(mFiringExit != null) { StopCoroutine(mFiringExit); mFiringExit = null; }
+                    if(!mIsFiring) {
+                        if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
+                        mIsFiring = false;
 
-                    //enter if we are not firing or already entering
-                    if(mFiring == null && mFiringEnter == null) {
-                        StartCoroutine(mFiringEnter = DoFireEnter());
-                    }   
+                        StartCoroutine(mCurAct = DoFireEnter());
+                    }
                 }
                 else {
                     gameObject.SetActive(true);
 
-                    StartCoroutine(mFiringEnter = DoFireEnter());
+                    StartCoroutine(mCurAct = DoFireEnter());
                 }
             }
             else {
                 if(gameObject.activeSelf) {
                     //cancel other actions
-                    if(mFiringEnter != null) { StopCoroutine(mFiringEnter); mFiringEnter = null; }
-                    if(mFiring != null) { FireStop(false); }
+                    if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
+                    mIsFiring = false;
 
-                    StartCoroutine(mFiringExit = DoFireExit());
+                    StartCoroutine(mCurAct = DoFireExit());
                 }
             }
         }
@@ -88,10 +112,11 @@ public abstract class Buddy : MonoBehaviour {
     }
 
     public void FireStart() {
-        if(gameObject.activeSelf) {
+        if(!mIsFiring && gameObject.activeSelf) {
+            mIsFiring = true;
+
             //cancel other actions
-            if(mFiringEnter != null) { StopCoroutine(mFiringEnter); mFiringEnter = null; }
-            if(mFiringExit != null) { StopCoroutine(mFiringExit); mFiringExit = null; }
+            if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
 
             mFollow.target = null;
 
@@ -101,13 +126,15 @@ public abstract class Buddy : MonoBehaviour {
             OnFireStart();
 
             //start
-            StartCoroutine(mFiring = DoFiring());
+            StartCoroutine(mCurAct = DoFiring());
         }
     }
 
     public void FireStop(bool playIdle = true) {
-        if(gameObject.activeSelf) {
-            if(mFiring != null) { StopCoroutine(mFiring); mFiring = null; }
+        if(mIsFiring) {
+            mIsFiring = false;
+
+            if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
 
             if(playIdle && mTakeIdleInd != -1)
                 mAnim.Play(mTakeIdleInd);
@@ -117,17 +144,21 @@ public abstract class Buddy : MonoBehaviour {
             transform.localScale = Vector3.one;
             transform.rotation = Quaternion.identity;
 
+            StartCoroutine(mCurAct = DoIdle());
+
             OnFireStop();
         }
     }
 
     void OnDisable() {
-        if(mFiring != null) { StopCoroutine(mFiring); mFiring = null; }
-        if(mFiringEnter != null) { StopCoroutine(mFiringEnter); mFiringEnter = null; }
-        if(mFiringExit != null) { StopCoroutine(mFiringExit); mFiringExit = null; }
+        if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
+
+        mIsFiring = false;
 
         transform.localScale = Vector3.one;
         transform.rotation = Quaternion.identity;
+
+        mLastFireTime = 0.0f;
     }
 
     void Awake() {
@@ -156,15 +187,41 @@ public abstract class Buddy : MonoBehaviour {
             gameObject.SetActive(false);
 	}
 
+    IEnumerator DoIdle() {
+        WaitForSeconds wait = new WaitForSeconds(idleFaceXDelay);
+
+        bool isMoving = false;
+
+        while(true) {
+            if(Mathf.Abs(mFollow.currentVelocity.x) >= idleFaceXMin) {
+                Vector3 s = transform.localScale;
+                s.x = Mathf.Sign(mFollow.currentVelocity.x);
+                transform.localScale = s;
+
+                isMoving = true;
+            }
+            else if(isMoving) {
+                //face based on player's dir
+                Vector3 s = transform.localScale;
+                s.x = Player.instance.controllerAnim.isLeft ? -1 : 1;
+                transform.localScale = s;
+
+                isMoving = false;
+            }
+
+            yield return wait;
+        }
+    }
+
     IEnumerator DoFiring() {
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
-        float lastTime = Time.fixedTime;
-
         while(true) {
-            if(Time.fixedTime - lastTime >= fireRate) {
-                lastTime = Time.fixedTime;
-                OnFire();
+            if(Time.fixedTime - mLastFireTime >= fireRate) {
+                mLastFireTime = Time.fixedTime;
+
+                if(canFire)
+                    OnFire();
             }
 
             //keep our position to fire pos
@@ -195,10 +252,10 @@ public abstract class Buddy : MonoBehaviour {
                 yield return wait;
         }
 
-        mFiringEnter = null;
-
         if(mTakeIdleInd != -1)
             mAnim.Play(mTakeIdleInd);
+
+        StartCoroutine(mCurAct = DoIdle());
 
         OnEnter();
     }
@@ -216,8 +273,6 @@ public abstract class Buddy : MonoBehaviour {
             while(mAnim.isPlaying)
                 yield return wait;
         }
-
-        mFiringExit = null;
 
         OnExit();
 
