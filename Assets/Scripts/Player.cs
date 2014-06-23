@@ -10,6 +10,11 @@ public class Player : EntityBase {
         Down
     }
 
+    public enum LayerMove {
+        Back,
+        Front
+    }
+
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
     public float hurtInvulDelay = 0.5f;
@@ -20,6 +25,11 @@ public class Player : EntityBase {
     public float slideHeight = 0.79f;
     public LayerMask solidMask; //use for standing up, etc.
 
+    public float layerMoveZOfs = 0.5f;
+    public float layerMoveDelay = 0.3f;
+    public AnimationCurve layerMoveCurve;
+    public LayerMask layerMoveCheck;
+    
     public Transform look;
 
     public Transform cameraPoint;
@@ -51,6 +61,7 @@ public class Player : EntityBase {
     private bool mAllowPauseTime = true;
     private PlayMakerFSM mSpecialTriggerFSM; //special trigger activated
     private LookDir mCurLook = LookDir.Front;
+    private IEnumerator mLayerMoving;
     
     public static Player instance { get { return mInstance; } }
 
@@ -93,6 +104,26 @@ public class Player : EntityBase {
     public float controllerDefaultForce {
         get { return mDefaultCtrlMoveForce; }
     }
+
+    public LayerMove currentLayerMove { 
+        get { return transform.position.z > 0.0f ? LayerMove.Back : LayerMove.Front; }
+        set {
+            Vector3 pos = transform.position;
+            switch(value) {
+                case LayerMove.Back:
+                    pos.z = layerMoveZOfs;
+                    break;
+                case LayerMove.Front:
+                    pos.z = -layerMoveZOfs;
+                    break;
+            }
+            transform.position = pos;
+
+            if(mLayerMoving != null) { StopCoroutine(mLayerMoving); mLayerMoving = null; }
+        }
+    }
+
+    public bool isLayerMoving { get { return mLayerMoving != null; } }
 
     public bool inputEnabled {
         get { return mInputEnabled; }
@@ -157,6 +188,25 @@ public class Player : EntityBase {
                         look.rotation = Quaternion.Euler(0, 0, -90);
                         break;
                 }
+            }
+        }
+    }
+
+    public void LayerCancelMoving() {
+        if(mLayerMoving != null) {
+            currentLayerMove = transform.position.z < 0.0f ? LayerMove.Back : LayerMove.Front;
+        }
+    }
+
+    public void LayerMoveTo(LayerMove l) {
+        if(currentLayerMove != l && mLayerMoving == null) {
+            //check if we can move
+            Vector3 dir = l == LayerMove.Back ? Vector3.back : Vector3.forward;
+            RaycastHit hit;
+            if(!mCtrl.CheckCast(0.1f, dir, out hit, layerMoveZOfs, layerMoveCheck))
+                StartCoroutine(mLayerMoving = DoLayerMoving(l));
+            else {
+                //feedback
             }
         }
     }
@@ -276,6 +326,7 @@ public class Player : EntityBase {
 
             case EntityState.Invalid:
                 inputEnabled = false;
+                LayerCancelMoving();
                 break;
         }
     }
@@ -347,6 +398,8 @@ public class Player : EntityBase {
 
         //start ai, player control, etc
         currentBuddyIndex = PlayerSave.BuddySelected();
+
+        currentLayerMove = LayerMove.Front;
 
         StartCoroutine(DoCameraPointWallCheck());
     }
@@ -437,11 +490,9 @@ public class Player : EntityBase {
             float inpY = input.GetAxis(0, InputAction.MoveY);
 
             if(inpY < -0.1f)
-                lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
+                LayerMoveTo(LayerMove.Front);
             else if(inpY > 0.1f)
-                lookDir = LookDir.Up;
-            else
-                lookDir = LookDir.Front;
+                LayerMoveTo(LayerMove.Back);
         }
     }
 
@@ -542,8 +593,8 @@ public class Player : EntityBase {
 
     void OnInputJump(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
+#if false
             InputManager input = InputManager.instance;
-
             if(!mSliding) {
                 if(input.GetAxis(0, InputAction.MoveY) < -0.1f && mCtrl.isGrounded) {
                     //Weapon curWpn = weapons[mCurWeaponInd];
@@ -569,6 +620,14 @@ public class Player : EntityBase {
                     }
                 }
             }
+#else
+            mCtrl.Jump(true);
+            if(mCtrl.isJumpWall) {
+                //Vector2 p = mCtrlSpr.wallStickParticle.transform.position;
+                //PoolController.Spawn("fxp", "wallSpark", "wallSpark", null, p);
+                //sfxWallJump.Play();
+            }
+#endif
         }
         else if(dat.state == InputManager.State.Released) {
             mCtrl.Jump(false);
@@ -772,6 +831,36 @@ public class Player : EntityBase {
 
             yield return waitCheck;
         }
+    }
+
+    IEnumerator DoLayerMoving(LayerMove move) {
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
+        Rigidbody body = rigidbody;
+        float curDelay = 0.0f;
+
+        float sz = body.position.z;
+        float ez = move == LayerMove.Back ? layerMoveZOfs : -layerMoveZOfs;
+        do {
+            Vector3 pos = body.position;
+
+            float t = curDelay/layerMoveDelay;
+
+            curDelay += Time.fixedDeltaTime;
+
+            if(curDelay >= layerMoveDelay) {
+                pos.z = ez;
+                body.MovePosition(pos);
+                break;
+            }
+            else {
+                pos.z = Mathf.Lerp(sz, ez, layerMoveCurve.Evaluate(t));
+                body.MovePosition(pos);
+            }
+
+            yield return wait;
+        } while(curDelay < layerMoveDelay);
+
+        mLayerMoving = null;
     }
 
     void OnRigidbodyCollisionEnter(RigidBodyController controller, Collision col) {
