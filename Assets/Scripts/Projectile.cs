@@ -364,7 +364,7 @@ public class Projectile : EntityBase {
         }
     }
 
-    bool CheckTag(string tag) {
+    bool CheckHitTag(string tag) {
         if(hitTags.Length == 0)
             return true;
 
@@ -428,8 +428,8 @@ public class Projectile : EntityBase {
 
                             Vector3 reflVel = Vector3.Reflect(rigidbody.velocity, normal);
 
-                            if(bounceRigidbodyApplyVelocity)
-                                rigidbody.velocity = reflVel;
+                            /*if(bounceRigidbodyApplyVelocity)
+                                rigidbody.velocity = reflVel;*/
 
                             //TODO: this is only for 2D
                             switch(forceBounce) {
@@ -459,12 +459,6 @@ public class Projectile : EntityBase {
                                         mActiveForce *= force;
                                     }
                                     break;
-                            }
-
-                            if(bounceSurfaceOfs != 0.0f) {
-                                Vector3 p = transform.position;
-                                p += normal*bounceSurfaceOfs;
-                                rigidbody.MovePosition(p);
                             }
                         }
 
@@ -522,7 +516,7 @@ public class Projectile : EntityBase {
     }
 
     void ApplyDamage(GameObject go, Vector3 pos, Vector3 normal) {
-        if(mDamage && !explodeOnDeath && CheckTag(go.tag)) {
+        if(mDamage && !explodeOnDeath && CheckHitTag(go.tag)) {
             if(mDamage.CallDamageTo(go, pos, normal)) {
                 if(damageExpireCount != -1) {
                     mCurDamageCount++;
@@ -533,18 +527,22 @@ public class Projectile : EntityBase {
         }
     }
 
+    void ProcessContact(GameObject go, Vector3 pt, Vector3 n) {
+        ApplyContact(go, pt, n);
+        ApplyDamage(go, pt, n);
+
+        if(contactType != ContactType.End && EndByContactMask.value != 0 && isAlive && ((1<<go.layer) & EndByContactMask) != 0) {
+            state = (int)State.Dying;
+        }
+    }
+
     void OnCollisionEnter(Collision collision) {
         foreach(ContactPoint cp in collision.contacts) {
             mLastHit.col = cp.otherCollider;
             mLastHit.normal = cp.normal;
             mLastHit.point = cp.point;
 
-            ApplyContact(cp.otherCollider.gameObject, cp.point, cp.normal);
-            ApplyDamage(cp.otherCollider.gameObject, cp.point, cp.normal);
-
-            if(contactType != ContactType.End && EndByContactMask.value != 0 && isAlive && ((1<<cp.otherCollider.gameObject.layer) & EndByContactMask) != 0) {
-                state = (int)State.Dying;
-            }
+            ProcessContact(cp.otherCollider.gameObject, cp.point, cp.normal);
         }
     }
 
@@ -596,10 +594,10 @@ public class Projectile : EntityBase {
         Collider[] cols = Physics.OverlapSphere(pos, mSphereColl.radius, simpleLayerMask);
         for(int i = 0, max = cols.Length; i < max; i++) {
             Collider col = cols[i];
-            if(CheckTag(col.tag)) {
+            if(CheckHitTag(col.tag)) {
                 Vector3 dir = (col.bounds.center - pos).normalized;
-                ApplyContact(col.gameObject, pos, dir);
-                ApplyDamage(col.gameObject, pos, dir);
+
+                ProcessContact(col.gameObject, pos, dir);
             }
         }
     }
@@ -619,8 +617,8 @@ public class Projectile : EntityBase {
                 mLastHit.point = hit.point;
 
                 transform.position = hit.point + hit.normal * mSphereColl.radius;
-                ApplyContact(hit.collider.gameObject, hit.point, hit.normal);
-                ApplyDamage(hit.collider.gameObject, hit.point, hit.normal);
+
+                ProcessContact(hit.collider.gameObject, hit.point, hit.normal);
             }
             else {
                 //try contain
@@ -767,7 +765,7 @@ public class Projectile : EntityBase {
         Collider[] cols = Physics.OverlapSphere(pos, explodeRadius, explodeMask.value);
 
         foreach(Collider col in cols) {
-            if(col != null && col.rigidbody != null && CheckTag(col.gameObject.tag)) {
+            if(col != null && col.rigidbody != null && CheckHitTag(col.gameObject.tag)) {
                 //hurt?
                 col.rigidbody.AddExplosionForce(explodeForce, pos, explodeRadius, explodeUpwardMod, ForceMode.Force);
 
