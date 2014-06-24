@@ -37,7 +37,7 @@ public class BuddyFlame : Buddy {
 
     protected override void OnFire() {
         Matrix4x4 posMtx = firePoint.localToWorldMatrix;
-        Vector3 pos = firePoint.position;
+        Vector3 pos = firePoint.position; pos.z = 0.0f;
         Vector3 dir = posMtx.MultiplyVector(Vector3.right);
         projs[level].Fire(pos, dir);
     }

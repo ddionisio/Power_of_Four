@@ -4,16 +4,16 @@ using System.Collections;
 public class CameraController : MonoBehaviour {
     public enum Mode {
         Lock, //stop camera motion by controller
-        Free, //camera follows attach, restricted by bounds
+        Bound, //camera follows attach, restricted by bounds
         HorizontalLock, //camera X is forced at center of bounds, Y still follows attach
         VerticalLock, //camera Y is forced at center of bounds, X still follows attach
+        Free
     }
 
     public Mode mode = Mode.Lock;
     public float delay = 0.1f; //reposition delay
     public float transitionDelay = 0.5f;
     public float transitionExpire = 1.0f;
-    public float pixelSizeDistance = 2000.0f; //used for perspective camera bounds
 
     private static CameraController mInstance;
 
@@ -91,6 +91,10 @@ public class CameraController : MonoBehaviour {
 
         //apply bounds
         switch(mode) {
+            case Mode.Bound:
+                ApplyBounds(ref dest);
+                break;
+
             case Mode.HorizontalLock:
                 ApplyBounds(ref dest);
                 dest.x = bounds.center.x;
@@ -102,7 +106,6 @@ public class CameraController : MonoBehaviour {
                 break;
 
             default:
-                ApplyBounds(ref dest);
                 break;
         }
 
@@ -120,13 +123,6 @@ public class CameraController : MonoBehaviour {
         if(bounds.size.x > 0.0f && bounds.size.y > 0.0f) {
             //convert bounds to pixels, then reconvert to actual pixel size
             Rect screen = mCam.screenExtent;
-
-            float pixelPerMeter = mCam.getPixelSize(pixelSizeDistance);//Mathf.Abs(transform.position.z - mCam.transform.position.z));
-            if(pixelPerMeter > 0.0f) {
-                Vector2 s = new Vector3(screen.size.x*mCam.pixelPerMeter, screen.size.y*mCam.pixelPerMeter);
-                s /= pixelPerMeter;
-                screen.size = s;
-            }
 
             if(pos.x - screen.width * 0.5f < bounds.min.x)
                 pos.x = bounds.min.x + screen.width * 0.5f;

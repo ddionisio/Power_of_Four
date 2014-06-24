@@ -4,20 +4,11 @@ using System.Collections;
 public class Player : EntityBase {
     public const string takeHurt = "hurt";
 
-    public const float layerMoveCheckReduceSize = 0.1f;
-
     public enum LookDir {
         Front,
         Up,
         Down
     }
-
-    public enum LayerMove {
-        Back,
-        Front
-    }
-
-    public delegate void OnLayerMoveUpdate(Player p, float z);
 
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
@@ -29,11 +20,6 @@ public class Player : EntityBase {
     public float slideHeight = 0.79f;
     public LayerMask solidMask; //use for standing up, etc.
 
-    public float layerMoveZOfs = 0.5f;
-    public float layerMoveDelay = 0.3f;
-    public AnimationCurve layerMoveCurve;
-    public LayerMask layerMoveCheck;
-    
     public Transform look;
 
     public Transform cameraPoint;
@@ -44,8 +30,6 @@ public class Player : EntityBase {
     public Transform buddyFirePoint;
 
     public Buddy[] buddies;
-
-    public event OnLayerMoveUpdate layerMoveUpdateCallback;
 
     private static Player mInstance;
     private PlayerStats mStats;
@@ -67,7 +51,6 @@ public class Player : EntityBase {
     private bool mAllowPauseTime = true;
     private PlayMakerFSM mSpecialTriggerFSM; //special trigger activated
     private LookDir mCurLook = LookDir.Front;
-    private IEnumerator mLayerMoving;
     
     public static Player instance { get { return mInstance; } }
 
@@ -110,29 +93,6 @@ public class Player : EntityBase {
     public float controllerDefaultForce {
         get { return mDefaultCtrlMoveForce; }
     }
-
-    public LayerMove currentLayerMove { 
-        get { return transform.position.z > 0.0f ? LayerMove.Back : LayerMove.Front; }
-        set {
-            Vector3 pos = transform.position;
-            switch(value) {
-                case LayerMove.Back:
-                    pos.z = layerMoveZOfs;
-                    break;
-                case LayerMove.Front:
-                    pos.z = -layerMoveZOfs;
-                    break;
-            }
-
-            rigidbody.MovePosition(pos);
-
-            if(mLayerMoving != null) { StopCoroutine(mLayerMoving); mLayerMoving = null; }
-
-            if(layerMoveUpdateCallback != null) layerMoveUpdateCallback(this, pos.z);
-        }
-    }
-
-    public bool isLayerMoving { get { return mLayerMoving != null; } }
 
     public bool inputEnabled {
         get { return mInputEnabled; }
@@ -199,34 +159,6 @@ public class Player : EntityBase {
                 }
             }
         }
-    }
-
-    public void LayerCancelMoving() {
-        if(mLayerMoving != null) {
-            currentLayerMove = transform.position.z < 0.0f ? LayerMove.Back : LayerMove.Front;
-        }
-    }
-
-    public void LayerMoveTo(LayerMove l) {
-        if(currentLayerMove != l && mLayerMoving == null) {
-            //check if we can move
-            if(LayerMoveCheck(l))
-                StartCoroutine(mLayerMoving = DoLayerMoving(l));
-            else {
-                //feedback
-            }
-        }
-    }
-
-    /// <summary>
-    /// Returns true if we can move towards given LayerMove
-    /// </summary>
-    /// <param name="l"></param>
-    /// <returns></returns>
-    public bool LayerMoveCheck(LayerMove l) {
-        Vector3 dir = l == LayerMove.Back ? Vector3.back : Vector3.forward;
-        RaycastHit hit;
-        return !mCtrl.CheckCast(layerMoveCheckReduceSize, dir, out hit, layerMoveZOfs, layerMoveCheck);
     }
 
     protected override void StateChanged() {
@@ -344,7 +276,6 @@ public class Player : EntityBase {
 
             case EntityState.Invalid:
                 inputEnabled = false;
-                LayerCancelMoving();
                 break;
         }
     }
@@ -400,8 +331,6 @@ public class Player : EntityBase {
             input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
         }
 
-        layerMoveUpdateCallback = null;
-
         base.OnDestroy();
     }
 
@@ -418,8 +347,6 @@ public class Player : EntityBase {
 
         //start ai, player control, etc
         currentBuddyIndex = PlayerSave.BuddySelected();
-
-        currentLayerMove = LayerMove.Front;
 
         StartCoroutine(DoCameraPointWallCheck());
     }
@@ -510,9 +437,11 @@ public class Player : EntityBase {
             float inpY = input.GetAxis(0, InputAction.MoveY);
 
             if(inpY < -0.1f)
-                LayerMoveTo(LayerMove.Front);
+                lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
             else if(inpY > 0.1f)
-                LayerMoveTo(LayerMove.Back);
+                lookDir = LookDir.Up;
+            else
+                lookDir = LookDir.Front;
         }
     }
 
@@ -613,8 +542,8 @@ public class Player : EntityBase {
 
     void OnInputJump(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
-#if false
             InputManager input = InputManager.instance;
+
             if(!mSliding) {
                 if(input.GetAxis(0, InputAction.MoveY) < -0.1f && mCtrl.isGrounded) {
                     //Weapon curWpn = weapons[mCurWeaponInd];
@@ -640,14 +569,6 @@ public class Player : EntityBase {
                     }
                 }
             }
-#else
-            mCtrl.Jump(true);
-            if(mCtrl.isJumpWall) {
-                //Vector2 p = mCtrlSpr.wallStickParticle.transform.position;
-                //PoolController.Spawn("fxp", "wallSpark", "wallSpark", null, p);
-                //sfxWallJump.Play();
-            }
-#endif
         }
         else if(dat.state == InputManager.State.Released) {
             mCtrl.Jump(false);
@@ -851,40 +772,6 @@ public class Player : EntityBase {
 
             yield return waitCheck;
         }
-    }
-
-    IEnumerator DoLayerMoving(LayerMove move) {
-        WaitForFixedUpdate wait = new WaitForFixedUpdate();
-        Rigidbody body = rigidbody;
-        float curDelay = 0.0f;
-
-        float sz = body.position.z;
-        float ez = move == LayerMove.Back ? layerMoveZOfs : -layerMoveZOfs;
-        do {
-            yield return wait;
-
-            Vector3 pos = body.position;
-
-            float t = curDelay/layerMoveDelay;
-
-            curDelay += Time.fixedDeltaTime;
-
-            //check if we can't move to destination, revert back
-            if(!LayerMoveCheck(move)) {
-                pos.z = sz;
-                body.MovePosition(pos);
-                if(layerMoveUpdateCallback != null) layerMoveUpdateCallback(this, sz);
-                break;
-            }
-
-            Vector3 npos = new Vector3(pos.x, pos.y,
-                curDelay >= layerMoveDelay ? ez : Mathf.Lerp(sz, ez, layerMoveCurve.Evaluate(t)));
-                        
-            body.MovePosition(npos);
-            if(layerMoveUpdateCallback != null) layerMoveUpdateCallback(this, npos.z);
-        } while(curDelay < layerMoveDelay);
-
-        mLayerMoving = null;
     }
 
     void OnRigidbodyCollisionEnter(RigidBodyController controller, Collision col) {
