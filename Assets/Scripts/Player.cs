@@ -4,6 +4,8 @@ using System.Collections;
 public class Player : EntityBase {
     public const string takeHurt = "hurt";
 
+    public const float layerMoveCheckReduceSize = 0.1f;
+
     public enum LookDir {
         Front,
         Up,
@@ -14,6 +16,8 @@ public class Player : EntityBase {
         Back,
         Front
     }
+
+    public delegate void OnLayerMoveUpdate(Player p, float z);
 
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
@@ -40,6 +44,8 @@ public class Player : EntityBase {
     public Transform buddyFirePoint;
 
     public Buddy[] buddies;
+
+    public event OnLayerMoveUpdate layerMoveUpdateCallback;
 
     private static Player mInstance;
     private PlayerStats mStats;
@@ -117,9 +123,12 @@ public class Player : EntityBase {
                     pos.z = -layerMoveZOfs;
                     break;
             }
-            transform.position = pos;
+
+            rigidbody.MovePosition(pos);
 
             if(mLayerMoving != null) { StopCoroutine(mLayerMoving); mLayerMoving = null; }
+
+            if(layerMoveUpdateCallback != null) layerMoveUpdateCallback(this, pos.z);
         }
     }
 
@@ -201,14 +210,23 @@ public class Player : EntityBase {
     public void LayerMoveTo(LayerMove l) {
         if(currentLayerMove != l && mLayerMoving == null) {
             //check if we can move
-            Vector3 dir = l == LayerMove.Back ? Vector3.back : Vector3.forward;
-            RaycastHit hit;
-            if(!mCtrl.CheckCast(0.1f, dir, out hit, layerMoveZOfs, layerMoveCheck))
+            if(LayerMoveCheck(l))
                 StartCoroutine(mLayerMoving = DoLayerMoving(l));
             else {
                 //feedback
             }
         }
+    }
+
+    /// <summary>
+    /// Returns true if we can move towards given LayerMove
+    /// </summary>
+    /// <param name="l"></param>
+    /// <returns></returns>
+    public bool LayerMoveCheck(LayerMove l) {
+        Vector3 dir = l == LayerMove.Back ? Vector3.back : Vector3.forward;
+        RaycastHit hit;
+        return !mCtrl.CheckCast(layerMoveCheckReduceSize, dir, out hit, layerMoveZOfs, layerMoveCheck);
     }
 
     protected override void StateChanged() {
@@ -381,6 +399,8 @@ public class Player : EntityBase {
         if(input) {
             input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
         }
+
+        layerMoveUpdateCallback = null;
 
         base.OnDestroy();
     }
@@ -841,23 +861,27 @@ public class Player : EntityBase {
         float sz = body.position.z;
         float ez = move == LayerMove.Back ? layerMoveZOfs : -layerMoveZOfs;
         do {
+            yield return wait;
+
             Vector3 pos = body.position;
 
             float t = curDelay/layerMoveDelay;
 
             curDelay += Time.fixedDeltaTime;
 
-            if(curDelay >= layerMoveDelay) {
-                pos.z = ez;
+            //check if we can't move to destination, revert back
+            if(!LayerMoveCheck(move)) {
+                pos.z = sz;
                 body.MovePosition(pos);
+                if(layerMoveUpdateCallback != null) layerMoveUpdateCallback(this, sz);
                 break;
             }
-            else {
-                pos.z = Mathf.Lerp(sz, ez, layerMoveCurve.Evaluate(t));
-                body.MovePosition(pos);
-            }
 
-            yield return wait;
+            Vector3 npos = new Vector3(pos.x, pos.y,
+                curDelay >= layerMoveDelay ? ez : Mathf.Lerp(sz, ez, layerMoveCurve.Evaluate(t)));
+                        
+            body.MovePosition(npos);
+            if(layerMoveUpdateCallback != null) layerMoveUpdateCallback(this, npos.z);
         } while(curDelay < layerMoveDelay);
 
         mLayerMoving = null;

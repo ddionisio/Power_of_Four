@@ -226,7 +226,7 @@ public abstract class Buddy : MonoBehaviour {
 
             //keep our position to fire pos
             Vector3 pos = transform.position;
-            Vector3 newPos = mFirePoint.position; newPos.z = pos.z;
+            Vector3 newPos = mFirePoint.position;
 
             transform.localScale = mFirePoint.lossyScale;
             transform.rotation = mFirePoint.rotation;
