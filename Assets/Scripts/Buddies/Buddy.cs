@@ -9,7 +9,7 @@ public abstract class Buddy : MonoBehaviour {
         Up,
         Down
     }
-        
+
     public float fireRate;
 
     public float idleFaceXMin = 0.15f;
@@ -48,6 +48,7 @@ public abstract class Buddy : MonoBehaviour {
     private bool mStartSetActivate = false;
     private Transform mStartToParent;
     private bool mIsFiring = false;
+    private float mLastFireTime;
 
     private Dir mDir;
 
@@ -73,10 +74,10 @@ public abstract class Buddy : MonoBehaviour {
             }
         }
     }
-        
+
     public AnimatorData anim { get { return mAnim; } }
     public bool isFiring { get { return mIsFiring; } }
-            
+
     /// <summary>
     /// Check to see if we can fire
     /// </summary>
@@ -132,7 +133,9 @@ public abstract class Buddy : MonoBehaviour {
 
             //cancel other actions
             if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
-                        
+
+            ApplyAnimation();
+
             //start
             StartCoroutine(mCurAct = DoFiring());
 
@@ -170,8 +173,8 @@ public abstract class Buddy : MonoBehaviour {
         mParentDefault = transform.parent;
     }
 
-	// Use this for initialization
-	void Start() {
+    // Use this for initialization
+    void Start() {
         mStarted = true;
 
         //setup data
@@ -194,14 +197,18 @@ public abstract class Buddy : MonoBehaviour {
         }
         else
             gameObject.SetActive(false);
-	}
+    }
 
     IEnumerator DoFiring() {
-        WaitForSeconds wait = new WaitForSeconds(fireRate);
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
         while(true) {
-            if(canFire)
-                OnFire();
+            if(Time.fixedTime - mLastFireTime >= fireRate) {
+                mLastFireTime = Time.fixedTime;
+
+                if(canFire)
+                    OnFire();
+            }
 
             yield return wait;
         }
@@ -263,7 +270,7 @@ public abstract class Buddy : MonoBehaviour {
                 break;
         }
     }
-	
+
     //Implements
 
     /// <summary>
