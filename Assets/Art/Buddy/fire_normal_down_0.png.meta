@@ -1,6 +1,8 @@
 fileFormatVersion: 2
-guid: d4bda9776c179184580c2a334b6a2c2b
+guid: 1b7be5ff02820b848b34a9eda2e89040
 TextureImporter:
+  fileIDToRecycleName:
+    21300000: fire_normal_down_0
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -23,7 +25,7 @@ TextureImporter:
   textureFormat: -1
   maxTextureSize: 1024
   textureSettings:
-    filterMode: 0
+    filterMode: 2
     aniso: 1
     mipBias: -1
     wrapMode: 1

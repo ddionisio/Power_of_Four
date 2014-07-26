@@ -1,6 +1,8 @@
 fileFormatVersion: 2
 guid: 028af57dcd813754cb4b558ab74fd48d
 TextureImporter:
+  fileIDToRecycleName:
+    21300000: water_idle
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -23,7 +25,7 @@ TextureImporter:
   textureFormat: -1
   maxTextureSize: 1024
   textureSettings:
-    filterMode: 0
+    filterMode: 2
     aniso: 1
     mipBias: -1
     wrapMode: 1

@@ -25,9 +25,8 @@ public class Player : EntityBase {
     public Transform cameraPoint;
     public float cameraPointWallCheckDelay = 0.2f;
     public float cameraPointRevertDelay = 2.0f;
-    
-    public Transform buddyFollowPoint;
-    public Transform buddyFirePoint;
+
+    public Transform buddyPoint;
 
     public Buddy[] buddies;
 
@@ -63,11 +62,11 @@ public class Player : EntityBase {
 
                 //deactivate previous
                 if(prevBuddyInd >= 0)
-                    buddies[prevBuddyInd].Activate(false);
+                    buddies[prevBuddyInd].Deactivate();
 
                 //activate new one
                 if(mCurBuddyInd >= 0) {
-                    buddies[mCurBuddyInd].Activate(true);
+                    buddies[mCurBuddyInd].Activate(buddyPoint);
 
                     //change hud elements
                 }
@@ -390,8 +389,6 @@ public class Player : EntityBase {
         for(int i = 0; i < buddies.Length; i++) {
             Buddy buddy = buddies[i];
             buddy.level = PlayerSave.BuddyLevel(i);
-            buddy.followPoint = buddyFollowPoint;
-            buddy.firePoint = buddyFirePoint;
         }
     }
 
@@ -436,12 +433,24 @@ public class Player : EntityBase {
         else {
             float inpY = input.GetAxis(0, InputAction.MoveY);
 
-            if(inpY < -0.1f)
+            if(inpY < -0.25f) {
                 lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
-            else if(inpY > 0.1f)
+
+                if(currentBuddy)
+                    currentBuddy.dir = mCtrl.isGrounded ? Buddy.Dir.Front : Buddy.Dir.Down;
+            }
+            else if(inpY > 0.25f) {
                 lookDir = LookDir.Up;
-            else
+
+                if(currentBuddy)
+                    currentBuddy.dir = Buddy.Dir.Up;
+            }
+            else {
                 lookDir = LookDir.Front;
+
+                if(currentBuddy)
+                    currentBuddy.dir = Buddy.Dir.Front;
+            }
         }
     }
 

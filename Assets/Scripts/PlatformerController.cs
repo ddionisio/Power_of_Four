@@ -498,9 +498,7 @@ public class PlatformerController : RigidBodyController {
     }
 
     // Use this for initialization
-    protected override void Start() {
-        base.Start();
-
+    void Start() {
         inputEnabled = startInputEnabled;
     }
 

@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: ce8cf51be5833dc4ab6a56996f603b83
+guid: b8f0c9718a008704d9760363bc74510e
 TextureImporter:
   fileIDToRecycleName:
-    21300000: water_fire
+    21300000: fire_normal_up_0
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0

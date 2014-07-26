@@ -1,6 +1,8 @@
 fileFormatVersion: 2
-guid: ad2f7533e7a8c074c883949f3c8a9eaf
+guid: cce15e67b655b474d9e38041ad1b4f5c
 TextureImporter:
+  fileIDToRecycleName:
+    21300000: player_down0
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -23,7 +25,7 @@ TextureImporter:
   textureFormat: -1
   maxTextureSize: 1024
   textureSettings:
-    filterMode: 0
+    filterMode: 2
     aniso: 1
     mipBias: -1
     wrapMode: 1
@@ -33,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 0
+  alignment: 7
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32
@@ -42,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: Player
+  spritePackingTag: 
   userData: 

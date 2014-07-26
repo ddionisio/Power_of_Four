@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: ce8cf51be5833dc4ab6a56996f603b83
+guid: e59b4d4e9b53d5b4ea0e95f7542efbbc
 TextureImporter:
   fileIDToRecycleName:
-    21300000: water_fire
+    21300000: player_slide0
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 0
+  alignment: 7
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32

@@ -1,6 +1,8 @@
 fileFormatVersion: 2
-guid: ee5cb7e0309f1ee49ba1810b2d42df12
+guid: 26e3d528b4b723e4aa57dacd42f2f382
 TextureImporter:
+  fileIDToRecycleName:
+    21300000: player_wall0
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -23,7 +25,7 @@ TextureImporter:
   textureFormat: -1
   maxTextureSize: 1024
   textureSettings:
-    filterMode: 0
+    filterMode: 2
     aniso: 1
     mipBias: -1
     wrapMode: 1
@@ -42,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: Player
+  spritePackingTag: 
   userData: 
