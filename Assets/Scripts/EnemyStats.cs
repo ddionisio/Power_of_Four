@@ -2,7 +2,8 @@
 using System.Collections;
 
 public class EnemyStats : Stats {
-    public bool canGrab;
     public bool canImmolate;
+    public bool isGrabbable;
+    public bool isKnockable;
     public bool isBoss;
 }

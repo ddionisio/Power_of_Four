@@ -33,6 +33,7 @@ public class Player : EntityBase {
     private PlatformerController mCtrl;
     private PlatformerAnimatorController mCtrlAnim;
     private Blinker mBlinker;
+    private Rigidbody mBody;
     private float mDefaultCtrlMoveForce;
     private float mDefaultCtrlMoveMaxSpeed;
     private Vector3 mDefaultColliderCenter;
@@ -211,8 +212,8 @@ public class Player : EntityBase {
                 SetSlide(false);
                     
                 mCtrl.enabled = false;
-                rigidbody.isKinematic = true;
-                rigidbody.detectCollisions = false;
+                mBody.isKinematic = true;
+                mBody.detectCollisions = false;
                 collider.enabled = false;
 
                 //disable all input
@@ -349,6 +350,8 @@ public class Player : EntityBase {
 
         base.Awake();
 
+        mBody = rigidbody;
+
         //setup callbacks
         UIModalManager.instance.activeCallback += OnUIModalActive;
         SceneManager.instance.sceneChangeCallback += OnSceneChange;
@@ -374,6 +377,7 @@ public class Player : EntityBase {
         mDefaultCameraPointLPos = cameraPoint.localPosition;
 
         mStats = GetComponent<PlayerStats>();
+        mStats.changeHPCallback += OnStatsHPChange;
 
         mBlinker = GetComponent<Blinker>();
         mBlinker.activeCallback += OnBlinkActive;
@@ -608,8 +612,8 @@ public class Player : EntityBase {
         mHurtActive = true;
 
         mCtrl.enabled = false;
-        rigidbody.velocity = Vector3.zero;
-        rigidbody.drag = 0.0f;
+        mBody.velocity = Vector3.zero;
+        mBody.drag = 0.0f;
 
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
@@ -620,7 +624,7 @@ public class Player : EntityBase {
         while(mHurtActive) {
             yield return wait;
 
-            rigidbody.AddForce(normal * hurtForce);
+            mBody.AddForce(normal * hurtForce);
         }
 
         mCtrl.enabled = true;
@@ -701,16 +705,16 @@ public class Player : EntityBase {
                     if(clearVelocity) {
                         mCtrl.moveSide = 0.0f;
 
-                        if(!rigidbody.isKinematic) {
-                            Vector3 v = rigidbody.velocity; v.x = 0.0f; v.z = 0.0f;
-                            rigidbody.velocity = v;
+                        if(!mBody.isKinematic) {
+                            Vector3 v = mBody.velocity; v.x = 0.0f; v.z = 0.0f;
+                            mBody.velocity = v;
                         }
                     } else {
                         //limit x velocity
-                        Vector3 v = rigidbody.velocity;
+                        Vector3 v = mBody.velocity;
                         if(Mathf.Abs(v.x) > 12.0f) {
                             v.x = Mathf.Sign(v.x) * 12.0f;
-                            rigidbody.velocity = v;
+                            mBody.velocity = v;
                         }
                     }
 
