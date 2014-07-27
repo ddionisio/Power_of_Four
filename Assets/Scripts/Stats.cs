@@ -19,8 +19,6 @@ public class Stats : MonoBehaviour {
     public DamageMod[] damageTypeAmp;
     public DamageMod[] damageTypeReduction;
 
-    public bool stunImmune;
-
     public string deathTag = "Death";
 
     public int itemDropIndex = -1;

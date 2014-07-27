@@ -14,4 +14,19 @@ public struct PlayerSave {
     public static int BuddyLevel(int ind) {
         return 0;
     }
+
+    /// <summary>
+    /// Number of heart upgrade acquired.
+    /// </summary>
+    public static int HeartUpgradeCount() {
+        return 0;
+    }
+
+    /// <summary>
+    /// Number of heart tanks acquired.
+    /// </summary>
+    /// <returns></returns>
+    public static int HeartTankCount() {
+        return 0;
+    }
 }

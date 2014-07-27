@@ -1,15 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class EnemyStats : MonoBehaviour {
-
-	// Use this for initialization
-	void Start () {
-	
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+public class EnemyStats : Stats {
+    public bool canGrab;
+    public bool canImmolate;
+    public bool isBoss;
 }

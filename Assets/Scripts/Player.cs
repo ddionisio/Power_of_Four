@@ -26,15 +26,13 @@ public class Player : EntityBase {
     public float cameraPointWallCheckDelay = 0.2f;
     public float cameraPointRevertDelay = 2.0f;
 
-    public Transform buddyPoint;
-
     public Buddy[] buddies;
 
     private static Player mInstance;
     private PlayerStats mStats;
     private PlatformerController mCtrl;
     private PlatformerAnimatorController mCtrlAnim;
-    private SpriteColorBlink[] mBlinks;
+    private Blinker mBlinker;
     private float mDefaultCtrlMoveForce;
     private float mDefaultCtrlMoveMaxSpeed;
     private Vector3 mDefaultColliderCenter;
@@ -66,7 +64,7 @@ public class Player : EntityBase {
 
                 //activate new one
                 if(mCurBuddyInd >= 0) {
-                    buddies[mCurBuddyInd].Activate(buddyPoint);
+                    buddies[mCurBuddyInd].Activate();
 
                     //change hud elements
                 }
@@ -186,7 +184,7 @@ public class Player : EntityBase {
                 break;
 
             case EntityState.Hurt:
-                Blink(hurtInvulDelay);
+                mBlinker.Blink(hurtInvulDelay);
 
                 if(currentBuddy)
                     currentBuddy.FireStop();
@@ -291,7 +289,7 @@ public class Player : EntityBase {
         }
         //
 
-        Blink(0.0f);
+        mBlinker.Stop();
         mStats.isInvul = true;
 
         mCtrl.moveSideLock = true;
@@ -299,11 +297,7 @@ public class Player : EntityBase {
         //mCtrl.ResetCollision();
     }
 
-    protected override void SetBlink(bool blink) {
-        foreach(SpriteColorBlink blinker in mBlinks) {
-            blinker.enabled = blink;
-        }
-
+    void OnBlinkActive(bool blink) {
         mStats.isInvul = blink;
     }
 
@@ -381,10 +375,8 @@ public class Player : EntityBase {
 
         mStats = GetComponent<PlayerStats>();
 
-        mBlinks = GetComponentsInChildren<SpriteColorBlink>(true);
-        foreach(SpriteColorBlink blinker in mBlinks) {
-            blinker.enabled = false;
-        }
+        mBlinker = GetComponent<Blinker>();
+        mBlinker.activeCallback += OnBlinkActive;
 
         for(int i = 0; i < buddies.Length; i++) {
             Buddy buddy = buddies[i];

@@ -52,8 +52,6 @@ public abstract class Buddy : MonoBehaviour {
 
     private Dir mDir;
 
-    private Transform mParentDefault;
-
     public int level {
         get { return mLevel; }
         set {
@@ -91,7 +89,7 @@ public abstract class Buddy : MonoBehaviour {
     /// Call with act=true to make this buddy your active weapon.  Call with act=false when switching buddy.
     /// </summary>
     /// <param name="act"></param>
-    public void Activate(Transform toParent) {
+    public void Activate() {
         if(mStarted) {
             if(gameObject.activeSelf) {
                 if(!mIsFiring) {
@@ -102,10 +100,6 @@ public abstract class Buddy : MonoBehaviour {
                 }
             }
             else {
-                transform.parent = toParent;
-                transform.localPosition = Vector3.zero;
-                transform.localRotation = Quaternion.identity;
-
                 gameObject.SetActive(true);
 
                 StartCoroutine(mCurAct = DoEnter());
@@ -113,7 +107,6 @@ public abstract class Buddy : MonoBehaviour {
         }
         else { //we haven't started, so call Activate during Start
             mStartSetActivate = true;
-            mStartToParent = toParent;
         }
     }
 
@@ -169,8 +162,6 @@ public abstract class Buddy : MonoBehaviour {
 
     void Awake() {
         mAnim = GetComponent<AnimatorData>();
-
-        mParentDefault = transform.parent;
     }
 
     // Use this for initialization
@@ -191,7 +182,7 @@ public abstract class Buddy : MonoBehaviour {
 
         //activate
         if(mStartSetActivate) {
-            Activate(mStartToParent);
+            Activate();
             mStartSetActivate = false;
             mStartToParent = null;
         }
@@ -248,7 +239,6 @@ public abstract class Buddy : MonoBehaviour {
 
         OnExit();
 
-        transform.parent = mParentDefault;
         gameObject.SetActive(false);
     }
 

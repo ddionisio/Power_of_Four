@@ -95,6 +95,7 @@ public class Projectile : EntityBase {
     protected SphereCollider mSphereColl;
     protected float mMoveScale = 1.0f;
     private Stats mStats;
+    private Blinker mBlink;
     private int mCurBounce = 0;
     private int mCurDamageCount = 0;
     private HitInfo mLastHit;
@@ -198,6 +199,8 @@ public class Projectile : EntityBase {
             mStats.changeHPCallback += OnHPChange;
             mStats.isInvul = true;
         }
+
+        mBlink = GetComponent<Blinker>();
 
         if(!FSM)
             autoSpawnFinish = true;
@@ -303,8 +306,8 @@ public class Projectile : EntityBase {
                     PhysicsDisable();
 
                 if(dieDelay > 0) {
-                    if(dieBlink)
-                        Blink(dieDelay);
+                    if(dieBlink && mBlink)
+                        mBlink.Blink(dieDelay);
 
                     CancelInvoke("Die");
                     Invoke("Die", dieDelay);

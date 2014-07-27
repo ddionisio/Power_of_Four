@@ -3,9 +3,13 @@
     Normal,
     Hurt,
     Dead,
-    Stun,
-
+            
     //for enemies
+    Immolate,
+    Grabbed,
+    Thrown,
+    Knocked,
+
     BossEntry, //boss enters
     RespawnWait,
 
