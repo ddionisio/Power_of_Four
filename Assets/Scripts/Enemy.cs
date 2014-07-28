@@ -13,6 +13,7 @@ public class Enemy : EntityBase {
     public string takeGrabbed = "grabbed";
     public string takeThrown = "thrown";
     public string takeKnocked = "knock";
+    public string takeKnockedGround = "knockGround"; //upon landing
 
     public bool disablePhysicsOnDeath = true;
     public bool releaseOnDeath = false;
@@ -20,6 +21,9 @@ public class Enemy : EntityBase {
     public string deathSpawnGroup; //upon death, spawn this
     public string deathSpawnType;
     public Vector3 deathSpawnOfs;
+
+    public float knockJumpDelay = 0.1f;
+    public float knockDuration = 2.0f;
 
     private PlatformerController mCtrl;
     private GravityController mCtrlGravity;
@@ -32,6 +36,9 @@ public class Enemy : EntityBase {
     private bool mBodyKinematicDefault;
 
     private Damage[] mDamageTriggers;
+    private MaterialFloatPropertyControl[] mMatPropCtrls;
+
+    private IEnumerator mCurStateAction;
 
     public EnemyStats stats { get { return mStats; } }
     public PlatformerController bodyCtrl { get { return mCtrl; } }
@@ -52,10 +59,12 @@ public class Enemy : EntityBase {
     }
 
     public void PlayAnim(string take) {
-        if(mCtrlAnim)
-            mCtrlAnim.PlayOverrideClip(take);
-        else if(mAnim)
-            mAnim.Play(take);
+        if(!string.IsNullOrEmpty(take)) {
+            if(mCtrlAnim)
+                mCtrlAnim.PlayOverrideClip(take);
+            else if(mAnim)
+                mAnim.Play(take);
+        }
     }
 
     public void StopAnim() {
@@ -63,6 +72,50 @@ public class Enemy : EntityBase {
             mCtrlAnim.StopOverrideClip();
         else if(mAnim)
             mAnim.Stop();
+    }
+
+    void OnTriggerEnter(Collider col) {
+        GameObject go = col.gameObject;
+
+        //knock target
+        if(go.CompareTag(knockTag)) {
+            if(stats && stats.isKnockable && (state == (int)EntityState.Normal || (mCtrl && state == (int)EntityState.Knocked && mCtrl.isGrounded))) {
+                //jump
+                Jump(knockJumpDelay);
+
+                if(state != (int)EntityState.Knocked)
+                    state = (int)EntityState.Knocked;
+                else {
+                    RestartStateAction();
+                }
+            }
+        }
+    }
+
+    protected override void ActivatorWakeUp() {
+        base.ActivatorWakeUp();
+
+        if(animatorControl && animatorControl.onDisableAction == AnimatorData.DisableAction.Pause) {
+            animatorControl.Resume();
+        }
+
+        //resume any actions
+        RunStateAction();
+    }
+
+    protected override void ActivatorSleep() {
+        base.ActivatorSleep();
+
+        mCurStateAction = null;
+
+        switch((EntityState)state) {
+            case EntityState.Dead:
+                if(releaseOnDeath) {
+                    activator.ForceActivate();
+                    Release();
+                }
+                break;
+        }
     }
 
     protected override void OnDespawned() {
@@ -85,7 +138,25 @@ public class Enemy : EntityBase {
                 break;
         }
 
+        if(mCurStateAction != null) {
+            StopCoroutine(mCurStateAction);
+            mCurStateAction = null;
+        }
+
+        StopAnim();
+
         switch((EntityState)state) {
+            case EntityState.Normal:
+                if(animatorControl)
+                    animatorControl.PlayDefault();
+
+                SetDamageTriggerActive(true);
+                break;
+
+            case EntityState.Knocked:
+                SetDamageTriggerActive(false);
+                break;
+
             case EntityState.Dead:
                 if(disablePhysicsOnDeath)
                     SetPhysicsActive(false, false);
@@ -130,8 +201,15 @@ public class Enemy : EntityBase {
                     mCtrl.enabled = true;
 
                 Jump(0.0f);
+
+                mCurStateAction = null;
+
+                for(int i = 0; i < mMatPropCtrls.Length; i++)
+                    mMatPropCtrls[i].Revert();
                 break;
         }
+
+        RunStateAction();
     }
 
     public override void SpawnFinish() {
@@ -180,6 +258,8 @@ public class Enemy : EntityBase {
             autoSpawnFinish = true;
 
         mBlink = GetComponent<Blinker>();
+
+        mMatPropCtrls = GetComponentsInChildren<MaterialFloatPropertyControl>(true);
     }
 
     // Use this for initialization
@@ -188,7 +268,7 @@ public class Enemy : EntityBase {
 
         //initialize variables from other sources (for communicating with managers, etc.)
     }
-
+        
     protected virtual void OnStatsHPChange(Stats stat, float delta) {
         if(stats.curHP <= 0.0f)
             state = (int)EntityState.Dead;
@@ -247,9 +327,67 @@ public class Enemy : EntityBase {
 
         SetDamageTriggerActive(aActive);
     }
+    
+    ///////////////////////////
+    //Actions
+
+    //Perform current state's action
+    void RunStateAction() {
+        switch((EntityState)state) {
+            case EntityState.Knocked:
+                StartCoroutine(mCurStateAction = DoKnock());
+                break;
+        }
+    }
+
+    void RestartStateAction() {
+        if(mCurStateAction != null)
+            StopCoroutine(mCurStateAction);
+        RunStateAction();
+    }
+
+    IEnumerator DoKnock() {
+        if(animatorControl)
+            animatorControl.Pause();
+
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
+
+        yield return wait;
+
+        if(mCtrl) {
+            if(mCtrl.isGrounded) {
+                PlayAnim(takeKnockedGround);
+            }
+            else {
+                //wait till we hit the ground
+                PlayAnim(takeKnocked);
+
+                while(!mCtrl.isGrounded)
+                    yield return wait;
+
+                PlayAnim(takeKnockedGround);
+            }
+        }
+        else
+            PlayAnim(takeKnocked);
+
+        yield return new WaitForSeconds(knockDuration);
+                
+        //return to normal
+        state = (int)EntityState.Normal;
+    }
+
+    ///////////////////////////
+    //Internal
 
     void AnimEndProcess(AMTakeData take) {
-
+        switch((EntityState)state) {
+            case EntityState.Dead:
+                //release?
+                if(releaseOnDeath)
+                    Release();
+                break;
+        }
     }
 
     //If there is animation controller

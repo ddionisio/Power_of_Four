@@ -184,7 +184,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
         switch(mState) {
             case State.None:
                 if(controller.isJumpWall) {
-                    if(anim) anim.Play (mWallJump);
+                    if(anim && mWallJump != -1) anim.Play(mWallJump);
 
                     left = controller.localVelocity.x < 0.0f;
                 }
@@ -193,7 +193,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
                         wallStickParticle.Play();
                     }
 
-                    if(anim) anim.Play(mWallStick);
+                    if(anim && mWallStick != -1) anim.Play(mWallStick);
 
                     left = M8.MathUtil.CheckSide(controller.wallStickCollide.normal, controller.dirHolder.up) == M8.MathUtil.Side.Right;
 
@@ -207,10 +207,10 @@ public class PlatformerAnimatorController : MonoBehaviour {
                     if(anim) {
                         if(controller.isGrounded) {
                             if(controller.moveSide != 0.0f) {
-                                anim.Play(mMove);
+                                if(mMove != -1) anim.Play(mMove);
                             }
                             else {
-                                anim.Play(mIdle);
+                                if(mIdle != -1) anim.Play(mIdle);
                             }
                         }
                         else {
@@ -233,7 +233,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
                 break;
 
             case State.Slide:
-                if(anim)
+                if(anim && mSlide != -1)
                     anim.Play(mSlide);
 
                 if(controller.moveSide != 0.0f) {

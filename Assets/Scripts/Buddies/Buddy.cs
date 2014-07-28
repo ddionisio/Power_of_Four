@@ -46,7 +46,6 @@ public abstract class Buddy : MonoBehaviour {
 
     private bool mStarted = false;
     private bool mStartSetActivate = false;
-    private Transform mStartToParent;
     private bool mIsFiring = false;
     private float mLastFireTime;
 
@@ -184,7 +183,6 @@ public abstract class Buddy : MonoBehaviour {
         if(mStartSetActivate) {
             Activate();
             mStartSetActivate = false;
-            mStartToParent = null;
         }
         else
             gameObject.SetActive(false);
