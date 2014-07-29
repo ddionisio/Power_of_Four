@@ -81,11 +81,10 @@ public class Enemy : EntityBase {
         if(go.CompareTag(knockTag)) {
             if(stats && stats.isKnockable && (state == (int)EntityState.Normal || (mCtrl && state == (int)EntityState.Knocked && mCtrl.isGrounded))) {
                 //jump
-                Jump(knockJumpDelay);
-
                 if(state != (int)EntityState.Knocked)
                     state = (int)EntityState.Knocked;
                 else {
+                    Jump(knockJumpDelay);
                     RestartStateAction();
                 }
             }
@@ -155,6 +154,8 @@ public class Enemy : EntityBase {
 
             case EntityState.Knocked:
                 SetDamageTriggerActive(false);
+
+                Jump(knockJumpDelay);
                 break;
 
             case EntityState.Dead:
@@ -355,14 +356,14 @@ public class Enemy : EntityBase {
         yield return wait;
 
         if(mCtrl) {
-            if(mCtrl.isGrounded) {
+            if(mCtrl.isGrounded && !mCtrl.isJump) {
                 PlayAnim(takeKnockedGround);
             }
             else {
                 //wait till we hit the ground
                 PlayAnim(takeKnocked);
 
-                while(!mCtrl.isGrounded)
+                while(!mCtrl.isGrounded || mCtrl.isJump)
                     yield return wait;
 
                 PlayAnim(takeKnockedGround);

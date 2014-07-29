@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: 26e3d528b4b723e4aa57dacd42f2f382
+guid: f943498160abe0d4ab423a6640a7c5e0
 TextureImporter:
   fileIDToRecycleName:
-    21300000: player_wall0
+    21300000: eye_open
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 7
+  alignment: 0
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32
@@ -44,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: Player
+  spritePackingTag: LevelCommon
   userData: 

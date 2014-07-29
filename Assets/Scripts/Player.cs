@@ -18,6 +18,7 @@ public class Player : EntityBase {
     public float slideSpeedMax;
     public float slideDelay;
     public float slideHeight = 0.79f;
+    public GameObject slideGOActive; //object to activate while sliding
     public LayerMask solidMask; //use for standing up, etc.
 
     public Transform look;
@@ -27,6 +28,8 @@ public class Player : EntityBase {
     public float cameraPointRevertDelay = 2.0f;
 
     public Buddy[] buddies;
+
+    public Transform eyeOrbPoint;
 
     private static Player mInstance;
     private PlayerStats mStats;
@@ -157,6 +160,13 @@ public class Player : EntityBase {
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// All saving happens here: player stats, current level, spawn point, collected orbs, etc.
+    /// </summary>
+    public void Save() {
+
     }
 
     protected override void StateChanged() {
@@ -690,6 +700,8 @@ public class Player : EntityBase {
 
                 mCtrlAnim.state = PlatformerAnimatorController.State.Slide;
 
+                if(slideGOActive) slideGOActive.SetActive(true);
+
                 //sfxSlide.Play();
             } else {
                 //cannot set to false if we can't stand
@@ -726,6 +738,8 @@ public class Player : EntityBase {
 
                     //slideParticle.Stop();
                     //slideParticle.Clear();
+
+                    if(slideGOActive) slideGOActive.SetActive(false);
                 } else {
                     mSliding = true;
                 }
