@@ -4,6 +4,8 @@ using System.Collections;
 public class Player : EntityBase {
     public const string takeHurt = "hurt";
 
+    public const float inputDirThreshold = 0.5f;
+
     public enum LookDir {
         Front,
         Up,
@@ -31,6 +33,9 @@ public class Player : EntityBase {
 
     public Transform eyeOrbPoint;
 
+    public Transform actionIconHolder;
+    public string actionIconDefault = "generic";
+
     private static Player mInstance;
     private PlayerStats mStats;
     private PlatformerController mCtrl;
@@ -50,8 +55,12 @@ public class Player : EntityBase {
     private int mCurBuddyInd = -1;
     private int mPauseCounter;
     private bool mAllowPauseTime = true;
-    private PlayMakerFSM mSpecialTriggerFSM; //special trigger activated
+    private PlayMakerFSM mSpecialTriggerFSM;
+    private SpecialTrigger mSpecialTrigger; //trigger that can be activated by action
     private LookDir mCurLook = LookDir.Front;
+    private GameObject[] mActionIcons;
+    private int mCurActionIconInd = -1;
+    private bool mUpIsPressed = false;
     
     public static Player instance { get { return mInstance; } }
 
@@ -116,6 +125,8 @@ public class Player : EntityBase {
                         input.RemoveButtonCall(0, InputAction.Secondary, OnInputSecondary);
                         input.RemoveButtonCall(0, InputAction.Previous, OnInputPowerPrev);
                         input.RemoveButtonCall(0, InputAction.Next, OnInputPowerNext);
+
+                        mUpIsPressed = false;
                     }
                 }
 
@@ -186,6 +197,9 @@ public class Player : EntityBase {
                 mStats.isInvul = false;
 
                 mCtrl.moveSideLock = false;
+
+                if(mCurActionIconInd != -1)
+                    mActionIcons[mCurActionIconInd].SetActive(true);
                 break;
         }
 
@@ -246,6 +260,9 @@ public class Player : EntityBase {
                 if(currentBuddy)
                     currentBuddy.FireStop();
 
+                if(mCurActionIconInd != -1)
+                    mActionIcons[mCurActionIconInd].SetActive(false);
+
                 LockControls();
                 break;
 
@@ -284,6 +301,8 @@ public class Player : EntityBase {
 
             case EntityState.Invalid:
                 inputEnabled = false;
+                mUpIsPressed = false;
+                SetActionIcon(-1);
                 break;
         }
     }
@@ -396,6 +415,12 @@ public class Player : EntityBase {
             Buddy buddy = buddies[i];
             buddy.level = PlayerSave.BuddyLevel(i);
         }
+
+        mActionIcons = new GameObject[actionIconHolder.childCount];
+        for(int i = 0; i < mActionIcons.Length; i++) {
+            mActionIcons[i] = actionIconHolder.GetChild(i).gameObject;
+            mActionIcons[i].SetActive(false);
+        }
     }
 
     // Use this for initialization
@@ -407,16 +432,35 @@ public class Player : EntityBase {
 
     void OnTriggerEnter(Collider col) {
         if(col.CompareTag("SpecialTrigger")) {
-            PlayMakerFSM fsm = col.GetComponent<PlayMakerFSM>();
-            if(fsm) {
-                mSpecialTriggerFSM = fsm;
+            mSpecialTriggerFSM = col.GetComponent<PlayMakerFSM>();
+            mSpecialTrigger = col.GetComponent<SpecialTrigger>();
+
+            if((mSpecialTrigger && mSpecialTrigger.enabled && !mSpecialTrigger.isActing && mSpecialTrigger.interactive) || mSpecialTriggerFSM) {
+                //set icon
+                string iconRef = mSpecialTrigger && !string.IsNullOrEmpty(mSpecialTrigger.iconRef) ? mSpecialTrigger.iconRef : actionIconDefault;
+                if(!string.IsNullOrEmpty(iconRef)) {
+                    SetActionIcon(-1);
+                    for(int i = 0; i < mActionIcons.Length; i++) {
+                        if(mActionIcons[i].name == iconRef) {
+                            SetActionIcon(i);
+                            break;
+                        }
+                    }   
+                }
+            }
+            else {
+                mSpecialTrigger = null;
             }
         }
     }
 
     void OnTriggerExit(Collider col) {
-        if(mSpecialTriggerFSM && col == mSpecialTriggerFSM.collider) {
-            mSpecialTriggerFSM = null;
+        if(col.CompareTag("SpecialTrigger")) {
+            if((mSpecialTrigger && col == mSpecialTrigger.collider) || (mSpecialTriggerFSM && col == mSpecialTriggerFSM.collider)) {
+                mSpecialTriggerFSM = null;
+                mSpecialTrigger = null;
+                SetActionIcon(-1);
+            }
         }
     }
 
@@ -436,26 +480,36 @@ public class Player : EntityBase {
                 SetSlide(false);
             }
         }
-        else {
+        else if(mInputEnabled) {
             float inpY = input.GetAxis(0, InputAction.MoveY);
 
-            if(inpY < -0.25f) {
+            if(inpY < -inputDirThreshold) {
                 lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
 
                 if(currentBuddy)
                     currentBuddy.dir = mCtrl.isGrounded ? Buddy.Dir.Front : Buddy.Dir.Down;
+
+                mUpIsPressed = false;
             }
-            else if(inpY > 0.25f) {
+            else if(inpY > inputDirThreshold) {
                 lookDir = LookDir.Up;
 
                 if(currentBuddy)
                     currentBuddy.dir = Buddy.Dir.Up;
+
+                //check for pressed
+                if(!mUpIsPressed) {
+                    UpPressed();
+                    mUpIsPressed = true;
+                }
             }
             else {
                 lookDir = LookDir.Front;
 
                 if(currentBuddy)
                     currentBuddy.dir = Buddy.Dir.Front;
+
+                mUpIsPressed = false;
             }
         }
     }
@@ -482,20 +536,6 @@ public class Player : EntityBase {
         }
     }
 
-    /*void OnWeaponEnergyCallback(Weapon weapon, float delta) {
-        if(weapon == weapons[mCurWeaponInd]) {
-            if(delta <= 0.0f) {
-                HUD.instance.barEnergy.current = Mathf.CeilToInt(weapon.currentEnergy);
-            }
-            else {
-                if(!HUD.instance.barEnergy.isAnimating)
-                    Pause(true);
-
-                HUD.instance.barEnergy.currentSmooth = Mathf.CeilToInt(weapon.currentEnergy);
-            }
-        }
-    }*/
-
     #endregion
 
     #region Anim
@@ -505,25 +545,21 @@ public class Player : EntityBase {
 
     void OnInputPrimary(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
-            if(mSpecialTriggerFSM) {
-                if(currentBuddy)
-                    currentBuddy.FireStop();
-
-                mSpecialTriggerFSM.SendEvent(EntityEvent.Interact);
-            }
-            else if(currentBuddy)
+            if(currentBuddy)
                 currentBuddy.FireStart();
         }
         else if(dat.state == InputManager.State.Released) {
-            if(!mSpecialTriggerFSM && currentBuddy)
+            if(currentBuddy)
                 currentBuddy.FireStop();
         }
     }
 
     void OnInputSecondary(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
-        }
-        else if(dat.state == InputManager.State.Released) {
+            if(!mSliding) {
+                if(mCtrl.isGrounded)
+                    SetSlide(true);
+            }
         }
     }
 
@@ -560,11 +596,10 @@ public class Player : EntityBase {
             InputManager input = InputManager.instance;
 
             if(!mSliding) {
-                if(input.GetAxis(0, InputAction.MoveY) < -0.1f && mCtrl.isGrounded) {
+                if(input.GetAxis(0, InputAction.MoveY) <= -inputDirThreshold && mCtrl.isGrounded) {
                     //Weapon curWpn = weapons[mCurWeaponInd];
                     //if(!curWpn.isFireActive || curWpn.allowSlide)
                         SetSlide(true);
-
                 }
                 else {
                     mCtrl.Jump(true);
@@ -576,7 +611,7 @@ public class Player : EntityBase {
                 }
             }
             else {
-                if(input.GetAxis(0, InputAction.MoveY) >= 0.0f) {
+                if(input.GetAxis(0, InputAction.MoveY) > -inputDirThreshold) {
                     //if we can stop sliding, then jump
                     SetSlide(false, false);
                     if(!mSliding) {
@@ -607,6 +642,19 @@ public class Player : EntityBase {
             }
         }
     }
+
+    void UpPressed() {
+        if(mSpecialTrigger || mSpecialTriggerFSM) {
+            if(currentBuddy)
+                currentBuddy.FireStop();
+
+            if(mSpecialTriggerFSM)
+                mSpecialTriggerFSM.SendEvent(EntityEvent.Interact);
+
+            if(mSpecialTrigger && mSpecialTrigger.enabled && !mSpecialTrigger.isActing && mSpecialTrigger.interactive)
+                mSpecialTrigger.Action(OnSpecialTriggerActFinish);
+        }
+    }
         
     #endregion
 
@@ -616,6 +664,18 @@ public class Player : EntityBase {
 
     void OnUIModalActive(bool a) {
         Pause(a);
+    }
+
+    //set to -1 to disable
+    void SetActionIcon(int ind) {
+        if(mCurActionIconInd != -1)
+            mActionIcons[mCurActionIconInd].SetActive(false);
+
+        if(ind != -1) {
+            mActionIcons[ind].SetActive(true);
+        }
+
+        mCurActionIconInd = ind;
     }
 
     IEnumerator DoHurtForce(Vector3 normal) {
@@ -799,6 +859,18 @@ public class Player : EntityBase {
     void OnLand(PlatformerController ctrl) {
         if(state != (int)EntityState.Invalid) {
             //effects
+        }
+    }
+
+    void OnSpecialTriggerActFinish() {
+        if(mSpecialTrigger) {
+            if(!mSpecialTrigger.enabled || !mSpecialTrigger.interactive) {
+                mSpecialTrigger = null;
+                SetActionIcon(-1);
+            }
+        }
+        else {
+            SetActionIcon(-1);
         }
     }
 }

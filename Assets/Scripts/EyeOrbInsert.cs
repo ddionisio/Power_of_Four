@@ -23,14 +23,19 @@ public class EyeOrbInsert : MonoBehaviour {
         LevelController lvlCtrl = LevelController.instance;
         //check if not inserted
         if(!lvlCtrl.eyeInsertIsFilled(index)) {
-            lvlCtrl.eyeInsertSetFilled(index, true);
+            //valid eye orb, grab it and place
+            EyeOrbPlayer.OrbData dat = EyeOrbPlayer.instance.Remove();
+            if(dat.index != -1) {
+                lvlCtrl.eyeOrbSetState(dat.index, LevelController.EyeOrbState.Placed);
+                lvlCtrl.eyeInsertSetFilled(index, true);
 
-            mEyeOrb = EyeOrbPlayer.instance.Remove();
-            if(mEyeOrb)
-                StartCoroutine(DoIt());
-            else {
-                if(mAnim)
-                    mAnim.Play(takeActive);
+                mEyeOrb = dat.orbT;
+                if(mEyeOrb)
+                    StartCoroutine(DoIt());
+                else {
+                    if(mAnim)
+                        mAnim.Play(takeActive);
+                }
             }
         }
     }

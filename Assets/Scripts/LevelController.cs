@@ -18,12 +18,14 @@ public class LevelController : MonoBehaviour {
 
     public string mainLevel; //should be the name of the main level, even if this stage is a sub of a sub
 
+    public SpecialTrigger bossDoor;
+
     private State mMainLevelState; //if mainLevel, then this is the state of the parent level
     private EyeOrbState[] mEyeOrbStates; //this is global to the main level and its sub levels
     private bool[] mEyeInsertIsFilled; //if this particular eye insert is filled.
 
     private GameObject[] mEyeInserts; //these are filled for main level
-
+        
     private static LevelController mInstance;
 
     public static LevelController instance { get { return mInstance; } }
@@ -51,6 +53,9 @@ public class LevelController : MonoBehaviour {
 
                 if(placedCount == mEyeOrbStates.Length) {
                     mMainLevelState = State.BossDoorUnlocked;
+
+                    if(bossDoor) //TODO: add glowiness and stuff?
+                        bossDoor.interactive = true;
                 }
             }
         }
@@ -87,6 +92,9 @@ public class LevelController : MonoBehaviour {
                 mEyeInserts = GameObject.FindGameObjectsWithTag(eyeInsertTag);
                 eyeCount = mEyeInserts.Length;
 
+                if(bossDoor)
+                    bossDoor.interactive = false;
+
                 UserData.instance.SetInt(mainLevelName+"_eyeNum", mEyeInserts.Length);
             }
             else {
@@ -109,7 +117,7 @@ public class LevelController : MonoBehaviour {
 
         for(int i = 0; i < mEyeOrbStates.Length; i++) {
             if(mEyeOrbStates[i] == EyeOrbState.Collected) {
-                eyeOrbPlayer.Add(playerPos);
+                eyeOrbPlayer.Add(playerPos, i);
             }
         }
     }

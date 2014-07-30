@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 public class EyeOrbPlayer : MonoBehaviour {
     public struct OrbData {
+        public int index;
         public Transform orbT;
         public IEnumerator routine;
     }
@@ -22,7 +23,7 @@ public class EyeOrbPlayer : MonoBehaviour {
 
     public static EyeOrbPlayer instance { get { return mInstance; } }
 
-    public void Add(Vector3 spawnPoint) {
+    public void Add(Vector3 spawnPoint, int ind) {
         if(mOrbAvailables.Count > 0) {
             Transform orb = mOrbAvailables.Dequeue();
             orb.position = spawnPoint;
@@ -30,22 +31,25 @@ public class EyeOrbPlayer : MonoBehaviour {
 
             IEnumerator r = DoOrbUpdate(orb);
 
-            mOrbActives.Enqueue(new OrbData() { orbT=orb, routine=r });
+            mOrbActives.Enqueue(new OrbData() { index=ind, orbT=orb, routine=r });
 
             StartCoroutine(r);
         }
     }
 
     //Make sure to deactive the transform once you are done
-    public Transform Remove() {
+    public OrbData Remove() {
         if(mOrbActives.Count > 0) {
             OrbData dat = mOrbActives.Dequeue();
             mOrbAvailables.Enqueue(dat.orbT);
-            StopCoroutine(dat.routine);
-            return dat.orbT;
+            if(dat.routine != null) {
+                StopCoroutine(dat.routine);
+                dat.routine = null;
+            }
+            return dat;
         }
 
-        return null;
+        return new OrbData() { index = -1 };
     }
 
     void OnDestroy() {
