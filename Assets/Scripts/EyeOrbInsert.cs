@@ -36,6 +36,9 @@ public class EyeOrbInsert : MonoBehaviour {
                     if(mAnim)
                         mAnim.Play(takeActive);
                 }
+
+                //save
+                Player.instance.Save();
             }
         }
     }

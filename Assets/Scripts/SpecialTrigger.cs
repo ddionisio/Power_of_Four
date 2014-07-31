@@ -3,6 +3,8 @@ using System.Collections;
 
 [AddComponentMenu("")]
 public abstract class SpecialTrigger : MonoBehaviour {
+    public const string tagCheck = "SpecialTrigger";
+
     public delegate void Callback();
 
     public string iconRef;
@@ -36,6 +38,9 @@ public abstract class SpecialTrigger : MonoBehaviour {
     IEnumerator DoAct(Callback onFinish) {
         mIsActing = true;
 
+        if(lockPlayerOnAct)
+            Player.instance.state = (int)EntityState.Lock;
+
         yield return StartCoroutine(Act());
 
         mIsActing = false;
@@ -44,6 +49,9 @@ public abstract class SpecialTrigger : MonoBehaviour {
 
         if(disableOnAct)
             enabled = false;
+
+        if(lockPlayerOnAct && Player.instance.state == (int)EntityState.Lock)
+            Player.instance.state = (int)EntityState.Normal;
 
         if(onFinish != null)
             onFinish();

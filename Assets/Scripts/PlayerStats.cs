@@ -56,7 +56,9 @@ public class PlayerStats : Stats {
 
     protected override void Awake() {
         mDefaultMaxHP = maxHP;
+    }
 
+    void Start() {
         LoadState();
     }
 }

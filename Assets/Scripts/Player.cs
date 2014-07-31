@@ -61,7 +61,8 @@ public class Player : EntityBase {
     private GameObject[] mActionIcons;
     private int mCurActionIconInd = -1;
     private bool mUpIsPressed = false;
-    
+    private bool mSpawned;
+
     public static Player instance { get { return mInstance; } }
 
     public int currentBuddyIndex {
@@ -153,6 +154,8 @@ public class Player : EntityBase {
 
     public PlayerStats stats { get { return mStats; } }
 
+    public bool isSpawned { get { return mSpawned; } }
+
     public LookDir lookDir {
         get { return mCurLook; }
         set {
@@ -175,9 +178,18 @@ public class Player : EntityBase {
 
     /// <summary>
     /// All saving happens here: player stats, current level, spawn point, collected orbs, etc.
+    /// Only works if player instance is valid
     /// </summary>
     public void Save() {
+        LevelController.instance.Save();
 
+        mStats.SaveState();
+
+        UserData.instance.Save();
+
+        PlayerPrefs.Save();
+
+        //show pop-up if available
     }
 
     protected override void StateChanged() {
@@ -234,7 +246,7 @@ public class Player : EntityBase {
                     currentBuddy.FireStop();
 
                 SetSlide(false);
-                    
+
                 mCtrl.enabled = false;
                 mBody.isKinematic = true;
                 mBody.detectCollisions = false;
@@ -300,6 +312,7 @@ public class Player : EntityBase {
                 break;
 
             case EntityState.Invalid:
+                mSpawned = false;
                 inputEnabled = false;
                 mUpIsPressed = false;
                 SetActionIcon(-1);
@@ -358,6 +371,8 @@ public class Player : EntityBase {
     }
 
     public override void SpawnFinish() {
+        mSpawned = true;
+
         state = (int)EntityState.Normal;
 
         if(SceneState.instance.GetGlobalValue("cheat") > 0) {
@@ -367,6 +382,7 @@ public class Player : EntityBase {
 
     protected override void SpawnStart() {
         //initialize some things
+        state = (int)EntityState.Spawn;
 
         //start ai, player control, etc
         currentBuddyIndex = PlayerSave.BuddySelected();
@@ -427,11 +443,15 @@ public class Player : EntityBase {
     protected override void Start() {
         base.Start();
 
-        //initialize hp stuff
+        //set player's starting location based on saved spawn point, if there is one.
+        Vector3 spawnPt;
+        if(LevelController.GetSpawnPoint(out spawnPt)) {
+            transform.position = spawnPt;
+        }
     }
 
     void OnTriggerEnter(Collider col) {
-        if(col.CompareTag("SpecialTrigger")) {
+        if(IsSpecialTrigger(col)) {
             mSpecialTriggerFSM = col.GetComponent<PlayMakerFSM>();
             mSpecialTrigger = col.GetComponent<SpecialTrigger>();
 
@@ -445,7 +465,7 @@ public class Player : EntityBase {
                             SetActionIcon(i);
                             break;
                         }
-                    }   
+                    }
                 }
             }
             else {
@@ -455,7 +475,7 @@ public class Player : EntityBase {
     }
 
     void OnTriggerExit(Collider col) {
-        if(col.CompareTag("SpecialTrigger")) {
+        if(IsSpecialTrigger(col)) {
             if((mSpecialTrigger && col == mSpecialTrigger.collider) || (mSpecialTriggerFSM && col == mSpecialTriggerFSM.collider)) {
                 mSpecialTriggerFSM = null;
                 mSpecialTrigger = null;
@@ -530,7 +550,7 @@ public class Player : EntityBase {
         else {
             //healed
             //if(!HUD.instance.barHP.isAnimating)
-                //Pause(true);
+            //Pause(true);
 
             //HUD.instance.barHP.currentSmooth = Mathf.CeilToInt(stat.curHP);
         }
@@ -599,7 +619,7 @@ public class Player : EntityBase {
                 if(input.GetAxis(0, InputAction.MoveY) <= -inputDirThreshold && mCtrl.isGrounded) {
                     //Weapon curWpn = weapons[mCurWeaponInd];
                     //if(!curWpn.isFireActive || curWpn.allowSlide)
-                        SetSlide(true);
+                    SetSlide(true);
                 }
                 else {
                     mCtrl.Jump(true);
@@ -628,7 +648,7 @@ public class Player : EntityBase {
     void OnInputSlide(InputManager.Info dat) {
         if(dat.state == InputManager.State.Pressed) {
             if(!mSliding && mCtrl.isGrounded) {
-                SetSlide(true);    
+                SetSlide(true);
             }
         }
     }
@@ -655,7 +675,7 @@ public class Player : EntityBase {
                 mSpecialTrigger.Action(OnSpecialTriggerActFinish);
         }
     }
-        
+
     #endregion
 
     void OnSuddenDeath() {
@@ -728,7 +748,8 @@ public class Player : EntityBase {
 
                 InputManager.instance.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
             }
-        } else {
+        }
+        else {
             mPauseCounter--;
             if(mPauseCounter == 0) {
                 if(mAllowPauseTime)
@@ -763,7 +784,8 @@ public class Player : EntityBase {
                 if(slideGOActive) slideGOActive.SetActive(true);
 
                 //sfxSlide.Play();
-            } else {
+            }
+            else {
                 //cannot set to false if we can't stand
                 if(CanStand()) {
                     //revert
@@ -781,7 +803,8 @@ public class Player : EntityBase {
                             Vector3 v = mBody.velocity; v.x = 0.0f; v.z = 0.0f;
                             mBody.velocity = v;
                         }
-                    } else {
+                    }
+                    else {
                         //limit x velocity
                         Vector3 v = mBody.velocity;
                         if(Mathf.Abs(v.x) > 12.0f) {
@@ -800,7 +823,8 @@ public class Player : EntityBase {
                     //slideParticle.Clear();
 
                     if(slideGOActive) slideGOActive.SetActive(false);
-                } else {
+                }
+                else {
                     mSliding = true;
                 }
             }
@@ -819,6 +843,10 @@ public class Player : EntityBase {
         return !Physics.CheckCapsule(u, d, r, solidMask);
     }
 
+    bool IsSpecialTrigger(Component comp) {
+        return M8.Util.CheckTag(comp, SpecialTrigger.tagCheck, Checkpoint.checkpointTagCheck, LevelController.bossDoorTagCheck);
+    }
+
     void OnSceneChange(string nextScene) {
         //save stuff
     }
@@ -831,7 +859,7 @@ public class Player : EntityBase {
 
     IEnumerator DoCameraPointWallCheck() {
         WaitForSeconds waitCheck = new WaitForSeconds(cameraPointWallCheckDelay);
-        
+
         float lastCheckTime = Time.fixedTime;
         bool isCameraPointSet = false;
 

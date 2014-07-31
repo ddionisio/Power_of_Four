@@ -3,6 +3,8 @@
     Normal,
     Hurt,
     Dead,
+
+    Spawn,
             
     //for enemies
     Immolate,

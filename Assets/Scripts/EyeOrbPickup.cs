@@ -10,7 +10,7 @@ public class EyeOrbPickup : MonoBehaviour {
         gameObject.SetActive(false);
     }
 
-    void Awake() {
+    void Start() {
         LevelController lvlCtrl = LevelController.instance;
 
         //check if already picked up

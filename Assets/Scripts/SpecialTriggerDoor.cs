@@ -3,7 +3,8 @@ using System.Collections;
 
 public class SpecialTriggerDoor : SpecialTrigger {
     public string toScene;
-    public string startPointRef; //which start point to spawn player to
+    public string toSceneSpawnPoint; //which start point to spawn player to
+    public bool save; //act as a checkpoint, save player stats and set the saved level/spawn point
 
     public bool startClosed = false;
 
@@ -32,7 +33,18 @@ public class SpecialTriggerDoor : SpecialTrigger {
 
     protected override void ActExecute() {
         //save states and stuff then enter scene
-        Debug.Log("fuck door go");
+        if(!string.IsNullOrEmpty(toScene)) {
+            if(save) {
+                LevelController.SetSavedLevel(toScene, toSceneSpawnPoint);
+
+                Player.instance.Save();
+            }
+            else {
+                LevelController.SetTempSpawnPoint(toSceneSpawnPoint);
+            }
+
+            SceneManager.instance.LoadScene(toScene);
+        }
     }
 
     void Awake() {
