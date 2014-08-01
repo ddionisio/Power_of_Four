@@ -3,6 +3,7 @@ using System.Collections;
 
 public class Stats : MonoBehaviour {
     public delegate void ChangeCallback(Stats stat, float delta);
+    public delegate void ChangeCallbackInt(Stats stat, int delta);
     public delegate void ApplyDamageCallback(Damage damage);
 
     [System.Serializable]

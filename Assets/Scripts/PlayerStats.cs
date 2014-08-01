@@ -2,18 +2,17 @@
 using System.Collections;
 
 public class PlayerStats : Stats {
+    public const int initialHeartCount = 4;
     public const float HitPerHeart = 2.0f;
     public const int heartPerTank = 4;
 
     public event ChangeCallback changeMaxHPCallback;
-    public event ChangeCallback changeDNACallback;
-
-    private float mDefaultMaxHP;
+    public event ChangeCallbackInt changeDNACallback;
 
     private int mHeartReserveCur;
     private int mHeartReserveMax;
 
-    private float mDNA;
+    private int mDNA;
 
     public int heartReserveCurrent {
         get { return mHeartReserveCur; }
@@ -26,12 +25,12 @@ public class PlayerStats : Stats {
         get { return mHeartReserveMax; }
     }
 
-    public float DNA {
+    public int DNA {
         get { return mDNA; }
         set {
-            float val = Mathf.Clamp(value, 0.0f, float.MaxValue);
+            int val = Mathf.Clamp(value, 0, int.MaxValue);
             if(mDNA != val) {
-                float prev = mDNA;
+                int prev = mDNA;
                 mDNA = val;
 
                 if(changeDNACallback != null)
@@ -41,10 +40,19 @@ public class PlayerStats : Stats {
     }
 
     public void SaveState() {
+        UserData.instance.SetInt("hrc", mHeartReserveCur);
+        UserData.instance.SetInt("dna", mDNA);
     }
 
     public void LoadState() {
+        maxHP = (initialHeartCount + PlayerSave.heartUpgradeCount)*HitPerHeart;
+
         mCurHP = maxHP;
+
+        mHeartReserveCur = UserData.instance.GetInt("hrc");
+        mHeartReserveMax = PlayerSave.heartTankCount;
+
+        mDNA = UserData.instance.GetInt("dna");
     }
 
     protected override void OnDestroy() {
@@ -52,10 +60,6 @@ public class PlayerStats : Stats {
         changeDNACallback = null;
 
         base.OnDestroy();
-    }
-
-    protected override void Awake() {
-        mDefaultMaxHP = maxHP;
     }
 
     void Start() {

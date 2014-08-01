@@ -2,6 +2,9 @@
 using System.Collections;
 
 public class Player : EntityBase {
+    public const string savedBuddySelectedKey = "sb";
+    public const string lastBuddySelectedKey = "lb"; //when going to the next level, stored in SceneState global
+
     public const string takeHurt = "hurt";
 
     public const float inputDirThreshold = 0.5f;
@@ -68,7 +71,7 @@ public class Player : EntityBase {
     public int currentBuddyIndex {
         get { return mCurBuddyInd; }
         set {
-            if(mCurBuddyInd != value && (value == -1 || PlayerSave.BuddyIsUnlock(value))) {
+            if(mCurBuddyInd != value && (value == -1 || buddies[value].level > 0)) {
                 int prevBuddyInd = mCurBuddyInd;
                 mCurBuddyInd = value;
 
@@ -182,12 +185,16 @@ public class Player : EntityBase {
     /// </summary>
     public void Save() {
         LevelController.instance.Save();
-
+                
         mStats.SaveState();
+
+        PlayerSave.SaveData();
 
         UserData.instance.Save();
 
         PlayerPrefs.Save();
+
+        UserData.instance.SetInt(savedBuddySelectedKey, mCurBuddyInd);
 
         //show pop-up if available
     }
@@ -316,6 +323,8 @@ public class Player : EntityBase {
                 inputEnabled = false;
                 mUpIsPressed = false;
                 SetActionIcon(-1);
+
+                PlayerSave.UnloadData();
                 break;
         }
     }
@@ -385,7 +394,17 @@ public class Player : EntityBase {
         state = (int)EntityState.Spawn;
 
         //start ai, player control, etc
-        currentBuddyIndex = PlayerSave.BuddySelected();
+
+        //set buddy selected
+        int buddyIndex;
+        if(SceneState.instance.HasGlobalValue(lastBuddySelectedKey)) {
+            buddyIndex = SceneState.instance.GetGlobalValue(lastBuddySelectedKey, -1);
+            SceneState.instance.DeleteGlobalValue(lastBuddySelectedKey, false);
+        }
+        else {
+            buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, -1);
+        }
+        currentBuddyIndex = buddyIndex;
 
         StartCoroutine(DoCameraPointWallCheck());
     }
@@ -429,7 +448,7 @@ public class Player : EntityBase {
 
         for(int i = 0; i < buddies.Length; i++) {
             Buddy buddy = buddies[i];
-            buddy.level = PlayerSave.BuddyLevel(i);
+            buddy.level = PlayerSave.BuddyGetLevel(i);
         }
 
         mActionIcons = new GameObject[actionIconHolder.childCount];
@@ -589,7 +608,7 @@ public class Player : EntityBase {
                 if(toBuddyInd >= buddies.Length)
                     toBuddyInd = 0;
 
-                if(buddies[toBuddyInd] && PlayerSave.BuddyIsUnlock(toBuddyInd)) {
+                if(buddies[toBuddyInd] && buddies[toBuddyInd].level > 0) {
                     currentBuddyIndex = toBuddyInd;
                     break;
                 }
@@ -603,7 +622,7 @@ public class Player : EntityBase {
                 if(toBuddyInd < 0)
                     toBuddyInd = buddies.Length - 1;
 
-                if(buddies[toBuddyInd] && PlayerSave.BuddyIsUnlock(toBuddyInd)) {
+                if(buddies[toBuddyInd] && buddies[toBuddyInd].level > 0) {
                     currentBuddyIndex = toBuddyInd;
                     break;
                 }
@@ -849,6 +868,7 @@ public class Player : EntityBase {
 
     void OnSceneChange(string nextScene) {
         //save stuff
+        
     }
 
     IEnumerator DoDeathFinishDelay() {

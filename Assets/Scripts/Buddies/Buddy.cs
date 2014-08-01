@@ -38,7 +38,7 @@ public abstract class Buddy : MonoBehaviour {
     private int mTakeAttackUpInd;
     private int mTakeAttackDownInd;
 
-    private int mLevel = 1;
+    private int mLevel = 0;
 
     private AnimatorData mAnim;
 

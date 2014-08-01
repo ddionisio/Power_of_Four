@@ -47,7 +47,7 @@ public class BuddyFlame : Buddy {
         else
             fireDir = Vector3.up;
 
-        projs[level].Fire(pos, fireDir);
+        projs[level - 1].Fire(pos, fireDir);
     }
 
     protected override void OnFireStop() { }

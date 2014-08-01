@@ -43,6 +43,9 @@ public class SpecialTriggerDoor : SpecialTrigger {
                 LevelController.SetTempSpawnPoint(toSceneSpawnPoint);
             }
 
+            //save last buddy selected
+            SceneState.instance.SetGlobalValue(Player.lastBuddySelectedKey, Player.instance.currentBuddyIndex, false);
+
             SceneManager.instance.LoadScene(toScene);
         }
     }
