@@ -10,6 +10,14 @@ public abstract class Buddy : MonoBehaviour {
         Down
     }
 
+    [System.Serializable]
+    public struct LevelInfo {
+        public string iconSpriteRef;
+        public string labelTextRef;
+    }
+
+    public delegate void Callback(Buddy bud);
+
     public float fireRate;
 
     public float idleFaceXMin = 0.15f;
@@ -26,8 +34,11 @@ public abstract class Buddy : MonoBehaviour {
 
     public Transform projPoint;
 
-    public string iconSpriteRef;
-    public string labelTextRef;
+    public LevelInfo[] levelInfos;
+
+    public event Callback activateCallback;
+    public event Callback deactivateCallback;
+    public event Callback levelChangeCallback;
 
     private int mTakeEnterInd;
     private int mTakeExitInd;
@@ -51,15 +62,27 @@ public abstract class Buddy : MonoBehaviour {
 
     private Dir mDir;
 
+    private int mInd = -1;
+
+    /// <summary>
+    /// Get Level, 0 == locked. Subtract 1 when using as index.
+    /// </summary>
     public int level {
         get { return mLevel; }
         set {
             if(mLevel != value) {
                 mLevel = value;
-                //stuff
+
+                if(mInd >= 0)
+                    PlayerSave.BuddySetLevel(mInd, mLevel);
+
+                if(levelChangeCallback != null)
+                    levelChangeCallback(this);
             }
         }
     }
+
+    public int index { get { return mInd; } }
 
     public virtual Dir dir {
         get { return mDir; }
@@ -73,6 +96,7 @@ public abstract class Buddy : MonoBehaviour {
     }
 
     public AnimatorData anim { get { return mAnim; } }
+    public bool isActive { get { return gameObject.activeSelf; } }
     public bool isFiring { get { return mIsFiring; } }
 
     /// <summary>
@@ -159,13 +183,31 @@ public abstract class Buddy : MonoBehaviour {
         transform.rotation = Quaternion.identity;
     }
 
+    void OnDestroy() {
+        activateCallback = null;
+        deactivateCallback = null;
+        levelChangeCallback = null;
+    }
+
     void Awake() {
         mAnim = GetComponent<AnimatorData>();
+
+        //determine index
+        Player player = Player.instance;
+        for(int i = 0; i < player.buddies.Length; i++) {
+            if(player.buddies[i] == this) {
+                mInd = i;
+                break;
+            }
+        }
     }
 
     // Use this for initialization
     void Start() {
         mStarted = true;
+
+        //load level from save
+        mLevel = PlayerSave.BuddyGetLevel(mInd);
 
         //setup data
         mTakeEnterInd = mAnim.GetTakeIndex(takeEnter);
@@ -208,6 +250,9 @@ public abstract class Buddy : MonoBehaviour {
 
         yield return wait;
 
+        if(activateCallback != null)
+            activateCallback(this);
+
         if(mTakeEnterInd != -1) {
             //make sure it's not looped!
             mAnim.Play(mTakeEnterInd);
@@ -236,6 +281,9 @@ public abstract class Buddy : MonoBehaviour {
         }
 
         OnExit();
+
+        if(deactivateCallback != null)
+            deactivateCallback(this);
 
         gameObject.SetActive(false);
     }

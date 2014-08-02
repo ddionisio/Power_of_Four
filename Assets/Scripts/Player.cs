@@ -15,6 +15,8 @@ public class Player : EntityBase {
         Down
     }
 
+    public delegate void BuddyCallback(Player player, Buddy bud);
+
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
     public float hurtInvulDelay = 0.5f;
@@ -38,6 +40,8 @@ public class Player : EntityBase {
 
     public Transform actionIconHolder;
     public string actionIconDefault = "generic";
+
+    public event BuddyCallback buddyUnlockCallback;
 
     private static Player mInstance;
     private PlayerStats mStats;
@@ -197,6 +201,16 @@ public class Player : EntityBase {
         UserData.instance.SetInt(savedBuddySelectedKey, mCurBuddyInd);
 
         //show pop-up if available
+    }
+
+    public void UnlockBuddy(int budInd) {
+        buddies[budInd].level = 1;
+
+        if(buddyUnlockCallback != null)
+            buddyUnlockCallback(this, buddies[budInd]);
+
+        //select new buddy
+        currentBuddyIndex = budInd;
     }
 
     protected override void StateChanged() {
@@ -376,6 +390,8 @@ public class Player : EntityBase {
             input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
         }
 
+        buddyUnlockCallback = null;
+
         base.OnDestroy();
     }
 
@@ -387,6 +403,17 @@ public class Player : EntityBase {
         if(SceneState.instance.GetGlobalValue("cheat") > 0) {
             stats.damageReduction = 1.0f;
         }
+
+        //set buddy selected
+        int buddyIndex;
+        if(SceneState.instance.HasGlobalValue(lastBuddySelectedKey)) {
+            buddyIndex = SceneState.instance.GetGlobalValue(lastBuddySelectedKey, 0);
+            SceneState.instance.DeleteGlobalValue(lastBuddySelectedKey, false);
+        }
+        else {
+            buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, 0);
+        }
+        currentBuddyIndex = buddyIndex;
     }
 
     protected override void SpawnStart() {
@@ -394,18 +421,7 @@ public class Player : EntityBase {
         state = (int)EntityState.Spawn;
 
         //start ai, player control, etc
-
-        //set buddy selected
-        int buddyIndex;
-        if(SceneState.instance.HasGlobalValue(lastBuddySelectedKey)) {
-            buddyIndex = SceneState.instance.GetGlobalValue(lastBuddySelectedKey, -1);
-            SceneState.instance.DeleteGlobalValue(lastBuddySelectedKey, false);
-        }
-        else {
-            buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, -1);
-        }
-        currentBuddyIndex = buddyIndex;
-
+                
         StartCoroutine(DoCameraPointWallCheck());
     }
 
@@ -445,12 +461,7 @@ public class Player : EntityBase {
 
         mBlinker = GetComponent<Blinker>();
         mBlinker.activeCallback += OnBlinkActive;
-
-        for(int i = 0; i < buddies.Length; i++) {
-            Buddy buddy = buddies[i];
-            buddy.level = PlayerSave.BuddyGetLevel(i);
-        }
-
+                
         mActionIcons = new GameObject[actionIconHolder.childCount];
         for(int i = 0; i < mActionIcons.Length; i++) {
             mActionIcons[i] = actionIconHolder.GetChild(i).gameObject;

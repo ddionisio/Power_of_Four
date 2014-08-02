@@ -131,8 +131,7 @@ public class LevelController : MonoBehaviour {
                 if(placedCount == mEyeOrbStates.Length) {
                     mMainLevelState = State.BossDoorUnlocked;
 
-                    if(mBossDoor) //TODO: add glowiness and stuff?
-                        mBossDoor.interactive = true;
+                    UnlockBossDoor();
                 }
             }
         }
@@ -195,6 +194,9 @@ public class LevelController : MonoBehaviour {
 
         LoadMainLevelStates();
 
+        if(mMainLevelState == State.BossDoorUnlocked)
+            UnlockBossDoor();
+
         //add eye orbs to player based on state
         StartCoroutine(DoAddPlayerEyeOrbs());
     }
@@ -251,5 +253,10 @@ public class LevelController : MonoBehaviour {
                 eyeOrbPlayer.Add(playerPos, i);
             }
         }
+    }
+
+    void UnlockBossDoor() {
+        if(mBossDoor) //TODO: add glowiness and stuff?
+            mBossDoor.interactive = true;
     }
 }

@@ -40,7 +40,10 @@ public struct PlayerSave {
         if(ind > 0)
             dat >>= ind*3;
         
-        return dat & 7;
+        //CHEAT
+        return 1;
+
+        //return dat & 7;
     }
 
     public static void BuddySetLevel(int ind, int level) {
