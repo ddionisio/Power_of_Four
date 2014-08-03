@@ -46,6 +46,9 @@ public class SpecialTriggerDoor : SpecialTrigger {
             //save last buddy selected
             SceneState.instance.SetGlobalValue(Player.lastBuddySelectedKey, Player.instance.currentBuddyIndex, false);
 
+            //save current health
+            SceneState.instance.SetGlobalValueFloat(PlayerStats.currentHPKey, Player.instance.stats.curHP, false);
+
             SceneManager.instance.LoadScene(toScene);
         }
     }

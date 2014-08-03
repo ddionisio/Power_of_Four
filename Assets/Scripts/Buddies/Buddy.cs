@@ -272,6 +272,9 @@ public abstract class Buddy : MonoBehaviour {
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
         yield return wait;
 
+        if(deactivateCallback != null)
+            deactivateCallback(this);
+
         if(mTakeExitInd != -1) {
             //make sure it's not looped!
             mAnim.Play(mTakeExitInd);
@@ -281,10 +284,7 @@ public abstract class Buddy : MonoBehaviour {
         }
 
         OnExit();
-
-        if(deactivateCallback != null)
-            deactivateCallback(this);
-
+                
         gameObject.SetActive(false);
     }
 

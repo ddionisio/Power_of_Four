@@ -2,11 +2,14 @@
 using System.Collections;
 
 public class PlayerStats : Stats {
+    public const string currentHPKey = "chp";
+
     public const int initialHeartCount = 4;
     public const float HitPerHeart = 2.0f;
     public const int heartPerTank = 4;
 
-    public event ChangeCallback changeMaxHPCallback;
+    public event ChangeCallbackInt changeMaxHeartCallback;
+    public event ChangeCallbackInt changeHeartReserveCallback;
     public event ChangeCallbackInt changeDNACallback;
 
     private int mHeartReserveCur;
@@ -23,6 +26,29 @@ public class PlayerStats : Stats {
 
     public int heartReserveMax {
         get { return mHeartReserveMax; }
+    }
+
+    /// <summary>
+    /// Use this to count the hearts based on current max hitpoints.  Set when upgrading.
+    /// </summary>
+    public int heartMaxCount {
+        get { return Mathf.RoundToInt(maxHP/HitPerHeart); }
+        set {
+            int curCount = heartMaxCount;
+            int newCount = Mathf.Clamp(value, 0, int.MaxValue);
+            if(curCount != value) {
+                PlayerSave.heartUpgradeCount = newCount - initialHeartCount;
+
+                int delta = newCount - curCount;
+
+                maxHP = newCount*HitPerHeart;
+
+                if(changeMaxHeartCallback != null)
+                    changeMaxHeartCallback(this, delta);
+
+                curHP += delta*HitPerHeart;
+            }
+        }
     }
 
     public int DNA {
@@ -47,16 +73,22 @@ public class PlayerStats : Stats {
     public void LoadState() {
         maxHP = (initialHeartCount + PlayerSave.heartUpgradeCount)*HitPerHeart;
 
-        mCurHP = maxHP;
+        if(SceneState.instance.HasGlobalValue(currentHPKey)) {
+            mCurHP = SceneState.instance.GetGlobalValueFloat(currentHPKey, maxHP);
+            SceneState.instance.DeleteGlobalValue(currentHPKey, false);
+        }
+        else
+            mCurHP = maxHP;
 
         mHeartReserveCur = UserData.instance.GetInt("hrc");
-        mHeartReserveMax = PlayerSave.heartTankCount;
+        mHeartReserveMax = PlayerSave.heartTankCount*heartPerTank;
 
         mDNA = UserData.instance.GetInt("dna");
     }
 
     protected override void OnDestroy() {
-        changeMaxHPCallback = null;
+        changeMaxHeartCallback = null;
+        changeHeartReserveCallback = null;
         changeDNACallback = null;
 
         base.OnDestroy();
