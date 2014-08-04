@@ -1,13 +1,6 @@
 ﻿public enum ItemType {
-    Health,
-    Energy,
-    Life,
-
-    HealthUpgrade,
-    EnergyTank,
-    WeaponTank,
-    Armor,
-    Invul,
+    Heart,
+    DNA,
 
     NumTypes
 }

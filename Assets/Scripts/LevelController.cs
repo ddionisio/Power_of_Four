@@ -31,6 +31,8 @@ public class LevelController : MonoBehaviour {
 
     private SpecialTrigger mBossDoor;
 
+    private int mPickUpBits; //filled upon start
+
     private static LevelController mInstance;
     private static string mSpawnPointTempName;
 
@@ -50,7 +52,7 @@ public class LevelController : MonoBehaviour {
     public State mainLevelState { get { return mMainLevelState; } }
 
     public int eyeOrbCount { get { return mEyeOrbStates.Length; } }
-
+        
     public static void SetSavedLevel(string levelName, string spawnPoint) {
         if(string.IsNullOrEmpty(levelName)) {
             UserData.instance.Delete(saveLevelNameKey);
@@ -111,6 +113,20 @@ public class LevelController : MonoBehaviour {
     /// </summary>
     public static void LoadSavedLevel() {
 
+    }
+
+    /// <summary>
+    /// Used by ItemPickUp, only call during Start or after
+    /// </summary>
+    public bool PickUpBitIsSet(int bit) {
+        return M8.Util.FlagCheckBit(mPickUpBits, bit);
+    }
+
+    /// <summary>
+    /// Used by ItemPickUp, only call during Start or after
+    /// </summary>
+    public void PickUpBitSet(int bit, bool set) {
+        M8.Util.FlagSetBit(mPickUpBits, bit, set);
     }
         
     public EyeOrbState eyeOrbGetState(int index) {
@@ -215,6 +231,8 @@ public class LevelController : MonoBehaviour {
             eyeStates>>=2;
             eyeInserts>>=1;
         }
+
+        mPickUpBits = UserData.instance.GetInt(Application.loadedLevelName+"_pb");
     }
 
     void SaveMainLevelStates() {
@@ -236,6 +254,8 @@ public class LevelController : MonoBehaviour {
 
         UserData.instance.SetInt(levelName+"_se", eyeStates);
         UserData.instance.SetInt(levelName+"_sei", eyeInserts);
+
+        UserData.instance.SetInt(Application.loadedLevelName+"_pb", mPickUpBits);
     }
 
     void OnPlayerSpawn(EntityBase ent) {

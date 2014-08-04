@@ -15,6 +15,7 @@ public class HUD : MonoBehaviour {
 
     private UIHeart[] mHearts;
 
+
     void Start() {
         Player player = Player.instance;
 
@@ -46,9 +47,6 @@ public class HUD : MonoBehaviour {
         player.stats.changeHeartReserveCallback += OnHeartReserveChange;
 
         heartContainer.curHeartCount = Mathf.Clamp(player.stats.heartReserveCurrent, 0, PlayerStats.heartPerTank);
-
-        //DNA
-        player.stats.changeDNACallback += OnDNAChange;
 
         //boss
     }
@@ -139,10 +137,6 @@ public class HUD : MonoBehaviour {
 
     void OnHeartMaxChange(Stats stat, int delta) {
         ApplyHeartMax();
-    }
-
-    void OnDNAChange(Stats stat, int delta) {
-
     }
 
     void OnHeartReserveChange(Stats stat, int delta) {
