@@ -360,6 +360,8 @@ public class Player : EntityBase {
 
         mCtrl.moveSideLock = true;
         mCtrl.moveSide = 0.0f;
+
+        mBody.velocity = Vector3.zero;
         //mCtrl.ResetCollision();
     }
 

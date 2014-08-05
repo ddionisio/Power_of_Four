@@ -13,8 +13,22 @@ public class HUD : MonoBehaviour {
     public Color heartBlinkColor;
     public Color heartBlinkCritColor;
 
+    public UIBoss boss;
+
+    private static HUD mInstance;
+
     private UIHeart[] mHearts;
 
+    public static HUD instance { get { return mInstance; } }
+
+    void OnDestroy() {
+        if(mInstance == this)
+            mInstance = null;
+    }
+
+    void Awake() {
+        mInstance = this;
+    }
 
     void Start() {
         Player player = Player.instance;

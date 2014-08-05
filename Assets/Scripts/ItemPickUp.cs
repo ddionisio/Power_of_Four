@@ -8,7 +8,7 @@ public class ItemPickUp : EntityBase {
         PickUp
     }
 
-    public const float destroyDelay = 3.0f;
+    public const float destroyDelay = 5.0f;
     public const float destroyBlinkDelay = 1.0f;
 
     public delegate void OnPickUp(ItemPickUp item);
