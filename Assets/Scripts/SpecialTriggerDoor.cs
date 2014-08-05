@@ -5,6 +5,7 @@ public class SpecialTriggerDoor : SpecialTrigger {
     public string toScene;
     public string toSceneSpawnPoint; //which start point to spawn player to
     public bool save; //act as a checkpoint, save player stats and set the saved level/spawn point
+    public bool saveToScene; //save toScene?
 
     public bool startClosed = false;
 
@@ -34,9 +35,10 @@ public class SpecialTriggerDoor : SpecialTrigger {
     protected override void ActExecute() {
         //save states and stuff then enter scene
         if(!string.IsNullOrEmpty(toScene)) {
-            if(save) {
+            if(saveToScene)
                 LevelController.SetSavedLevel(toScene, toSceneSpawnPoint);
 
+            if(save) {
                 Player.instance.Save();
             }
             else {

@@ -6,6 +6,8 @@ public class Enemy : EntityBase {
 
     public const string knockTag = "Knocker";
 
+    public delegate void EnemyCallback(Enemy enemy);
+
     public AnimatorData animatorControl; //if an animator is controlling this enemy's movement
 
     public string takeDeath = "die";
@@ -207,6 +209,8 @@ public class Enemy : EntityBase {
 
                 for(int i = 0; i < mMatPropCtrls.Length; i++)
                     mMatPropCtrls[i].Revert();
+
+                SetPhysicsActive(false, false);
                 break;
         }
 
@@ -217,6 +221,8 @@ public class Enemy : EntityBase {
         //start ai, player control, etc
         if(mStats)
             mStats.isInvul = false;
+
+        SetPhysicsActive(true, false);
 
         state = (int)EntityState.Normal;
     }
@@ -261,6 +267,8 @@ public class Enemy : EntityBase {
         mBlink = GetComponent<Blinker>();
 
         mMatPropCtrls = GetComponentsInChildren<MaterialFloatPropertyControl>(true);
+
+        SetPhysicsActive(false, false);
     }
 
     // Use this for initialization
@@ -269,7 +277,7 @@ public class Enemy : EntityBase {
 
         //initialize variables from other sources (for communicating with managers, etc.)
     }
-        
+
     protected virtual void OnStatsHPChange(Stats stat, float delta) {
         if(stats.curHP <= 0.0f)
             state = (int)EntityState.Dead;
@@ -328,7 +336,7 @@ public class Enemy : EntityBase {
 
         SetDamageTriggerActive(aActive);
     }
-    
+
     ///////////////////////////
     //Actions
 
@@ -373,7 +381,7 @@ public class Enemy : EntityBase {
             PlayAnim(takeKnocked);
 
         yield return new WaitForSeconds(knockDuration);
-                
+
         //return to normal
         state = (int)EntityState.Normal;
     }

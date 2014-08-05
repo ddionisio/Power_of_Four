@@ -22,9 +22,6 @@ public class Stats : MonoBehaviour {
 
     public string deathTag = "Death";
 
-    public int itemDropIndex = -1;
-    public Vector3 itemDropOfs;
-
     public event ChangeCallback changeHPCallback;
     public event ApplyDamageCallback applyDamageCallback;
 
@@ -146,11 +143,6 @@ public class Stats : MonoBehaviour {
             float amt = CalculateDamageAmount(damage);
 
             if(amt > 0.0f) {
-                if(curHP - amt <= 0.0f && itemDropIndex >= 0) {
-                    //Debug.Log("drop?");
-                    ItemDropManager.instance.DoDrop(itemDropIndex, transform.localToWorldMatrix.MultiplyPoint(itemDropOfs));
-                }
-
                 curHP -= amt;
 
                 ApplyDamageEvent(damage);
@@ -188,15 +180,6 @@ public class Stats : MonoBehaviour {
         if(col.gameObject.CompareTag(deathTag)) {
             SendMessage("OnSuddenDeath", null, SendMessageOptions.DontRequireReceiver);
             //curHP = 0;
-        }
-    }
-
-    void OnDrawGizmosSelected() {
-        if(itemDropIndex >= 0) {
-            Color clr = Color.red;
-            clr.a = 0.5f;
-            Gizmos.color = clr;
-            Gizmos.DrawSphere(transform.localToWorldMatrix.MultiplyPoint(itemDropOfs), 0.15f);
         }
     }
 }

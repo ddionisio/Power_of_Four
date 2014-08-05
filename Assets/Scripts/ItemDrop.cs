@@ -22,7 +22,7 @@ public class ItemDrop : MonoBehaviour {
 
             case EntityState.Dead:
                 if(mDropActive) {
-                    ItemDropManager.instance.DoDrop(groupIndex, transform.position + ofs);
+                    ItemDropManager.instance.DoDrop(groupIndex, transform.position + transform.localToWorldMatrix.MultiplyVector(ofs));
                     mDropActive = false;
                 }
                 break;
@@ -33,6 +33,6 @@ public class ItemDrop : MonoBehaviour {
         Color clr = Color.red;
         clr.a = 0.5f;
         Gizmos.color = clr;
-        Gizmos.DrawSphere(transform.position + ofs, 0.15f);
+        Gizmos.DrawSphere(transform.position + transform.localToWorldMatrix.MultiplyVector(ofs), 0.15f);
     }
 }

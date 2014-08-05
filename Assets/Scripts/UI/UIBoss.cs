@@ -22,6 +22,8 @@ public class UIBoss : MonoBehaviour {
 
     public void Init(Enemy enemy) {
         enemy.stats.changeHPCallback += OnEnemyStatHPChange;
+
+        enemy.setStateCallback += OnEnemyChangeState;
     }
 
 
@@ -34,5 +36,11 @@ public class UIBoss : MonoBehaviour {
 
     void OnEnemyStatHPChange(Stats s, float delta) {
         mSlider.value = s.curHP/s.maxHP;
+    }
+
+    void OnEnemyChangeState(EntityBase ent) {
+        if(ent.state == (int)EntityState.Dead) {
+            Exit();
+        }
     }
 }

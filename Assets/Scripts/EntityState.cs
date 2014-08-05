@@ -12,9 +12,6 @@
     Thrown,
     Knocked,
 
-    BossEntry, //boss enters
-    RespawnWait,
-
     // specific for player
     Lock,
     Victory,

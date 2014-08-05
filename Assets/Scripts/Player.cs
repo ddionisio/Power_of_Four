@@ -17,6 +17,8 @@ public class Player : EntityBase {
 
     public delegate void BuddyCallback(Player player, Buddy bud);
 
+    public bool startLocked;
+
     public float hurtForce = 15.0f;
     public float hurtDelay = 0.5f; //how long the hurt state lasts
     public float hurtInvulDelay = 0.5f;
@@ -400,7 +402,7 @@ public class Player : EntityBase {
     public override void SpawnFinish() {
         mSpawned = true;
 
-        state = (int)EntityState.Normal;
+        state = (int)(startLocked ? EntityState.Lock : EntityState.Normal);
 
         if(SceneState.instance.GetGlobalValue("cheat") > 0) {
             stats.damageReduction = 1.0f;

@@ -4,7 +4,7 @@ using System.Collections;
 public class PlatformerAnimatorController : MonoBehaviour {
     public delegate void Callback(PlatformerAnimatorController ctrl);
     public delegate void CallbackClip(PlatformerAnimatorController ctrl, AMTakeData take);
-    public delegate void CallbackClipFrame(PlatformerAnimatorController ctrl, AMTakeData take, AMKey key);
+    public delegate void CallbackClipFrame(PlatformerAnimatorController ctrl, AMTakeData take, AMKey key, AMTriggerData data);
 
     public enum State {
         None,
@@ -142,6 +142,8 @@ public class PlatformerAnimatorController : MonoBehaviour {
 
         if(anim) {
             //callbacks
+            anim.takeTriggerCallback += OnAnimTrigger;
+            anim.takeCompleteCallback += OnAnimFinish;
 
             SetFlipX(mIsLeft ? leftFlip : !leftFlip);
 
@@ -167,7 +169,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
     }
 
     void Update() {
-        if(controller == null)
+        if(controller == null || !controller.enabled)
             return;
 
         if(mAnimVelocitySpeedEnabled) {
@@ -260,5 +262,15 @@ public class PlatformerAnimatorController : MonoBehaviour {
             s.x = flip ? -Mathf.Abs(s.x) : Mathf.Abs(s.x);
             anim.transform.localScale = s;
         }
+    }
+
+    void OnAnimFinish(AnimatorData anim, AMTakeData take) {
+        if(clipFinishCallback != null)
+            clipFinishCallback(this, take);
+    }
+
+    void OnAnimTrigger(AnimatorData anim, AMTakeData take, AMKey key, AMTriggerData data) {
+        if(clipFrameEventCallback != null)
+            clipFrameEventCallback(this, take, key, data);
     }
 }

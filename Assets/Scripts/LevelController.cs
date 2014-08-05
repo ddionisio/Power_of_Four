@@ -49,7 +49,7 @@ public class LevelController : MonoBehaviour {
         
     public bool isMain { get { return string.IsNullOrEmpty(mainLevel); } }
 
-    public State mainLevelState { get { return mMainLevelState; } }
+    public State mainLevelState { get { return mMainLevelState; } set { mMainLevelState = value; } }
 
     public int eyeOrbCount { get { return mEyeOrbStates.Length; } }
         
