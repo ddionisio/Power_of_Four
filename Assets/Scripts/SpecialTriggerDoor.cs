@@ -51,7 +51,10 @@ public class SpecialTriggerDoor : SpecialTrigger {
             //save current health
             SceneState.instance.SetGlobalValueFloat(PlayerStats.currentHPKey, Player.instance.stats.curHP, false);
 
-            SceneManager.instance.LoadScene(toScene);
+            if(LevelController.instance)
+                LevelController.instance.LoadScene(toScene);
+            else
+                SceneManager.instance.LoadScene(toScene);
         }
     }
 

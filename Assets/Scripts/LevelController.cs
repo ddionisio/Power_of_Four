@@ -22,6 +22,10 @@ public class LevelController : MonoBehaviour {
     const string saveLevelNameKey = "lvl";
 
     public string mainLevel; //should be the name of the main level, even if this stage is a sub of a sub
+
+    public bool sceneTransOverride;
+    public string sceneTransOut;
+    public string sceneTransIn;
         
     private State mMainLevelState; //if mainLevel, then this is the state of the parent level
     private EyeOrbState[] mEyeOrbStates; //this is global to the main level and its sub levels
@@ -113,6 +117,16 @@ public class LevelController : MonoBehaviour {
     /// </summary>
     public static void LoadSavedLevel() {
 
+    }
+
+    /// <summary>
+    /// Use this to make use of the transition override
+    /// </summary>
+    public void LoadScene(string scene) {
+        if(sceneTransOverride)
+            SceneManager.instance.LoadScene(scene, sceneTransOut, sceneTransIn);
+        else
+            SceneManager.instance.LoadScene(scene);
     }
 
     /// <summary>
