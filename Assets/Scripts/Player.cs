@@ -43,6 +43,8 @@ public class Player : EntityBase {
     public Transform actionIconHolder;
     public string actionIconDefault = "generic";
 
+    public LayerMask triggerSpecialMask;
+
     public event BuddyCallback buddyUnlockCallback;
 
     private static Player mInstance;
@@ -422,10 +424,8 @@ public class Player : EntityBase {
 
     protected override void SpawnStart() {
         //initialize some things
-        state = (int)EntityState.Spawn;
 
         //start ai, player control, etc
-                
         StartCoroutine(DoCameraPointWallCheck());
     }
 
@@ -878,7 +878,7 @@ public class Player : EntityBase {
     }
 
     bool IsSpecialTrigger(Component comp) {
-        return M8.Util.CheckTag(comp, SpecialTrigger.tagCheck, Checkpoint.checkpointTagCheck, LevelController.bossDoorTagCheck);
+        return (triggerSpecialMask & (1<<comp.gameObject.layer)) != 0;
     }
 
     void OnSceneChange(string nextScene) {

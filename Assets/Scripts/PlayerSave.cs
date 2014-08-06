@@ -41,9 +41,9 @@ public struct PlayerSave {
             dat >>= ind*3;
         
         //CHEAT
-        return 1;
+        //return 1;
 
-        //return dat & 7;
+        return dat & 7;
     }
 
     public static void BuddySetLevel(int ind, int level) {
