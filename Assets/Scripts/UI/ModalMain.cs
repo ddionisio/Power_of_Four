@@ -26,7 +26,12 @@ public class ModalMain : UIController {
     }
 
     void OnPlayClick(GameObject go) {
+        if(UserSlotData.IsSlotExist(0))
+            UserSlotData.LoadSlot(0, false);
+        else
+            UserSlotData.CreateSlot(0, "temp");
 
+        LevelController.LoadSavedLevel();
     }
 
     void OnOptionsClick(GameObject go) {

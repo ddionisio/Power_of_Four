@@ -26,7 +26,7 @@ public class LevelController : MonoBehaviour {
     public bool sceneTransOverride;
     public string sceneTransOut;
     public string sceneTransIn;
-        
+
     private State mMainLevelState; //if mainLevel, then this is the state of the parent level
     private EyeOrbState[] mEyeOrbStates; //this is global to the main level and its sub levels
     private bool[] mEyeInsertIsFilled; //if this particular eye insert is filled.
@@ -43,20 +43,20 @@ public class LevelController : MonoBehaviour {
     public static LevelController instance { get { return mInstance; } }
 
     public static string savedLevelName { get { return UserData.instance.GetString(saveLevelNameKey); } }
-    public static string savedLevelSpawnPointName { 
-        get { 
+    public static string savedLevelSpawnPointName {
+        get {
             if(savedLevelName == Application.loadedLevelName)
                 return UserData.instance.GetString(saveSpawnPointNameKey);
             return "";
-        } 
+        }
     }
-        
+
     public bool isMain { get { return string.IsNullOrEmpty(mainLevel); } }
 
     public State mainLevelState { get { return mMainLevelState; } set { mMainLevelState = value; } }
 
     public int eyeOrbCount { get { return mEyeOrbStates.Length; } }
-        
+
     public static void SetSavedLevel(string levelName, string spawnPoint) {
         if(string.IsNullOrEmpty(levelName)) {
             UserData.instance.Delete(saveLevelNameKey);
@@ -113,10 +113,17 @@ public class LevelController : MonoBehaviour {
     }
 
     /// <summary>
-    /// Called when playing the game
+    /// Called when playing the game from main menu.
+    /// If no saved scene exists, then load the new game level
     /// </summary>
     public static void LoadSavedLevel() {
-
+        string toScene = savedLevelName;
+        if(string.IsNullOrEmpty(toScene)) {
+            SetSavedLevel(Scenes.newGame, "");
+            SceneManager.instance.LoadScene(Scenes.newGame);
+        }
+        else
+            SceneManager.instance.LoadScene(toScene);
     }
 
     /// <summary>
@@ -142,7 +149,7 @@ public class LevelController : MonoBehaviour {
     public void PickUpBitSet(int bit, bool set) {
         M8.Util.FlagSetBit(mPickUpBits, bit, set);
     }
-        
+
     public EyeOrbState eyeOrbGetState(int index) {
         return mEyeOrbStates[index];
     }

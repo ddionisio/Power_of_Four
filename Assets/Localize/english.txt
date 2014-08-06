@@ -1,6 +1,34 @@
 [
 	{
+		"key":"ver",
+		"text":"0.0.1"
+	},
+	{
 		"key":"title",
 		"text":"UNKNOWN"
+	},
+	{
+		"key":"confirm_base_text",
+		"text":"Are you sure?"
+	},
+	{
+		"key":"no",
+		"text":"NO"
+	},
+	{
+		"key":"yes",
+		"text":"YES"
+	},
+	{
+		"key":"confirm_restart",
+		"text":"RESTART"
+	},
+	{
+		"key":"confirm_lastsave",
+		"text":"LOAD LAST SAVE"
+	},
+	{
+		"key":"confirm_mainmenu",
+		"text":"RETURN TO MAIN MENU"
 	},
 ]
