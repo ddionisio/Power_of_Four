@@ -21,12 +21,6 @@ public class ModalPause : UIController {
         }
     }
 
-    protected override void OnOpen() {
-    }
-
-    protected override void OnClose() {
-    }
-
     void OnBackClick(GameObject go) {
         UIModalManager.instance.ModalCloseTop();
     }

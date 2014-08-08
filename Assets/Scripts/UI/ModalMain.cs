@@ -19,12 +19,6 @@ public class ModalMain : UIController {
         }
     }
 
-    protected override void OnOpen() {
-    }
-
-    protected override void OnClose() {
-    }
-
     void OnPlayClick(GameObject go) {
         if(UserSlotData.IsSlotExist(0))
             UserSlotData.LoadSlot(0, false);

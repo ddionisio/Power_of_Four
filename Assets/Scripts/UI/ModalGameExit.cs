@@ -24,12 +24,6 @@ public class ModalGameExit : UIController {
         }
     }
 
-    protected override void OnOpen() {
-    }
-
-    protected override void OnClose() {
-    }
-
     void OnRestartClick(GameObject go) {
         UIModalConfirm.Open(GameLocalize.instance.GetText("confirm_restart"), GameLocalize.instance.GetText("confirm_base_text"),
             delegate(bool aYes) {
