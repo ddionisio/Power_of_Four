@@ -889,6 +889,8 @@ public class Player : EntityBase {
     IEnumerator DoDeathFinishDelay() {
         yield return new WaitForSeconds(deathFinishDelay);
 
+        SceneState.instance.GlobalSnapshotRestore();
+        UserData.instance.SnapshotRestore();
         SceneManager.instance.Reload();
     }
 

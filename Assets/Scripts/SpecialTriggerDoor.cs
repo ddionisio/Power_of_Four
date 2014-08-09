@@ -5,8 +5,7 @@ public class SpecialTriggerDoor : SpecialTrigger {
     public string toScene;
     public string toSceneSpawnPoint; //which start point to spawn player to
     public bool save; //act as a checkpoint, save player stats and set the saved level/spawn point
-    public bool saveToScene; //save toScene?
-
+    
     public bool startClosed = false;
 
     public string takeClosed = "closed";
@@ -35,14 +34,9 @@ public class SpecialTriggerDoor : SpecialTrigger {
     protected override void ActExecute() {
         //save states and stuff then enter scene
         if(!string.IsNullOrEmpty(toScene)) {
-            if(saveToScene)
-                LevelController.SetSavedLevel(toScene, toSceneSpawnPoint);
-
             if(save) {
+                LevelController.SetSavedLevel(toScene, toSceneSpawnPoint);
                 Player.instance.Save();
-            }
-            else {
-                LevelController.SetTempSpawnPoint(toSceneSpawnPoint);
             }
 
             //save last buddy selected
@@ -52,7 +46,7 @@ public class SpecialTriggerDoor : SpecialTrigger {
             SceneState.instance.SetGlobalValueFloat(PlayerStats.currentHPKey, Player.instance.stats.curHP, false);
 
             if(LevelController.instance)
-                LevelController.instance.LoadScene(toScene);
+                LevelController.instance.LoadScene(toScene, toSceneSpawnPoint);
             else
                 SceneManager.instance.LoadScene(toScene);
         }

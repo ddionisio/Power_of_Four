@@ -73,10 +73,8 @@ public class PlayerStats : Stats {
     public void LoadState() {
         maxHP = (initialHeartCount + PlayerSave.heartUpgradeCount)*HitPerHeart;
 
-        if(SceneState.instance.HasGlobalValue(currentHPKey)) {
+        if(SceneState.instance.HasGlobalValue(currentHPKey))
             mCurHP = SceneState.instance.GetGlobalValueFloat(currentHPKey, maxHP);
-            SceneState.instance.DeleteGlobalValue(currentHPKey, false);
-        }
         else
             mCurHP = maxHP;
 

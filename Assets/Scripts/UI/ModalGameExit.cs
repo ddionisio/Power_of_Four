@@ -27,21 +27,30 @@ public class ModalGameExit : UIController {
     void OnRestartClick(GameObject go) {
         UIModalConfirm.Open(GameLocalize.instance.GetText("confirm_restart"), GameLocalize.instance.GetText("confirm_base_text"),
             delegate(bool aYes) {
-                if(aYes) SceneManager.instance.Reload();
+                if(aYes) {
+                    SceneState.instance.GlobalSnapshotRestore();
+                    UserData.instance.SnapshotRestore();
+                    SceneManager.instance.Reload();
+                }
             });
     }
 
     void OnLastSaveClick(GameObject go) {
         UIModalConfirm.Open(GameLocalize.instance.GetText("confirm_lastsave"), GameLocalize.instance.GetText("confirm_base_text"), delegate(bool aYes) {
-            if(aYes)
+            if(aYes) {
+                SceneState.instance.ResetGlobalValues();
+                UserData.instance.Load();
                 LevelController.LoadSavedLevel();
+            }
         });
     }
 
     void OnMainClick(GameObject go) {
         UIModalConfirm.Open(GameLocalize.instance.GetText("confirm_mainmenu"), GameLocalize.instance.GetText("confirm_base_text"), delegate(bool aYes) {
-            if(aYes)
+            if(aYes) {
+                SceneState.instance.ResetGlobalValues();
                 SceneManager.instance.LoadScene(Scenes.main);
+            }
         });
     }
 

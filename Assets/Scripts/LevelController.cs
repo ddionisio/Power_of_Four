@@ -21,6 +21,10 @@ public class LevelController : MonoBehaviour {
     const string saveSpawnPointNameKey = "lvlpt";
     const string saveLevelNameKey = "lvl";
 
+    //used when entering new level, not persistent
+    const string spawnPointLevelNameKey = "splvlName";
+    const string spawnPointNameKey = "spName";
+
     public string mainLevel; //should be the name of the main level, even if this stage is a sub of a sub
 
     public bool sceneTransOverride;
@@ -38,7 +42,6 @@ public class LevelController : MonoBehaviour {
     private int mPickUpBits; //filled upon start
 
     private static LevelController mInstance;
-    private static string mSpawnPointTempName;
 
     public static LevelController instance { get { return mInstance; } }
 
@@ -67,25 +70,34 @@ public class LevelController : MonoBehaviour {
 
             if(string.IsNullOrEmpty(spawnPoint))
                 UserData.instance.Delete(saveSpawnPointNameKey);
-            else
+            else {
                 UserData.instance.SetString(saveSpawnPointNameKey, spawnPoint);
-        }
-    }
 
-    /// <summary>
-    /// Use this to set player's spawn point before loading the next scene.
-    /// </summary>
-    public static void SetTempSpawnPoint(string spawnPoint) {
-        mSpawnPointTempName = spawnPoint;
+                //set stored spawnpoint if it's the same level name
+                if(levelName == SceneState.instance.GetGlobalValueString(spawnPointLevelNameKey))
+                    SceneState.instance.SetGlobalValueString(spawnPointNameKey, spawnPoint, false);
+            }
+        }
     }
 
     public static bool GetSpawnPoint(out Vector3 pt) {
         string goName;
-        if(string.IsNullOrEmpty(mSpawnPointTempName))
-            goName = savedLevelSpawnPointName;
+
+        string spawnPointScene = SceneState.instance.GetGlobalValueString(spawnPointLevelNameKey, "");
+        if(spawnPointScene == Application.loadedLevelName) {
+            goName = SceneState.instance.GetGlobalValueString(spawnPointNameKey, "");
+            if(string.IsNullOrEmpty(goName)) {
+                SceneState.instance.DeleteGlobalValue(spawnPointLevelNameKey, false);
+                SceneState.instance.DeleteGlobalValue(spawnPointNameKey, false);
+
+                goName = savedLevelSpawnPointName;
+            }
+        }
         else {
-            goName = mSpawnPointTempName;
-            mSpawnPointTempName = null;
+            SceneState.instance.DeleteGlobalValue(spawnPointLevelNameKey, false);
+            SceneState.instance.DeleteGlobalValue(spawnPointNameKey, false);
+
+            goName = savedLevelSpawnPointName;
         }
 
         if(!string.IsNullOrEmpty(goName)) {
@@ -117,6 +129,8 @@ public class LevelController : MonoBehaviour {
     /// If no saved scene exists, then load the new game level
     /// </summary>
     public static void LoadSavedLevel() {
+        SceneState.instance.DeleteGlobalValue(PlayerStats.currentHPKey, false);
+
         string toScene = savedLevelName;
         if(string.IsNullOrEmpty(toScene)) {
             SetSavedLevel(Scenes.newGame, "");
@@ -127,9 +141,18 @@ public class LevelController : MonoBehaviour {
     }
 
     /// <summary>
-    /// Use this to make use of the transition override
+    /// Use this to make use of the transition override and if you want to set player to a particular spot
     /// </summary>
-    public void LoadScene(string scene) {
+    public void LoadScene(string scene, string spawnPoint) {
+        if(string.IsNullOrEmpty(spawnPoint)) {
+            SceneState.instance.DeleteGlobalValue(spawnPointLevelNameKey, false);
+            SceneState.instance.DeleteGlobalValue(spawnPointNameKey, false);
+        }
+        else {
+            SceneState.instance.SetGlobalValueString(spawnPointLevelNameKey, scene, false);
+            SceneState.instance.SetGlobalValueString(spawnPointNameKey, spawnPoint, false);
+        }
+
         if(sceneTransOverride)
             SceneManager.instance.LoadScene(scene, sceneTransOut, sceneTransIn);
         else
@@ -147,7 +170,10 @@ public class LevelController : MonoBehaviour {
     /// Used by ItemPickUp, only call during Start or after
     /// </summary>
     public void PickUpBitSet(int bit, bool set) {
-        M8.Util.FlagSetBit(mPickUpBits, bit, set);
+        if(M8.Util.FlagCheckBit(mPickUpBits, bit) != set) {
+            M8.Util.FlagSetBit(mPickUpBits, bit, set);
+            SaveMainLevelStates();
+        }
     }
 
     public EyeOrbState eyeOrbGetState(int index) {
@@ -155,20 +181,25 @@ public class LevelController : MonoBehaviour {
     }
 
     public void eyeOrbSetState(int index, EyeOrbState state) {
-        mEyeOrbStates[index] = state;
-        if(state == EyeOrbState.Placed) {
-            //check if all is placed, then boss door open
-            if(mMainLevelState == State.None) {
-                int placedCount = 0;
-                for(int i = 0; i < mEyeOrbStates.Length; i++) {
-                    if(mEyeOrbStates[i] == EyeOrbState.Placed)
-                        placedCount++;
-                }
+        if(mEyeOrbStates[index] != state) {
+            mEyeOrbStates[index] = state;
+            SaveMainLevelStates();
+            if(state == EyeOrbState.Placed) {
+                //check if all is placed, then boss door open
+                if(mMainLevelState == State.None) {
+                    int placedCount = 0;
+                    for(int i = 0; i < mEyeOrbStates.Length; i++) {
+                        if(mEyeOrbStates[i] == EyeOrbState.Placed)
+                            placedCount++;
+                    }
 
-                if(placedCount == mEyeOrbStates.Length) {
-                    mMainLevelState = State.BossDoorUnlocked;
+                    if(placedCount == mEyeOrbStates.Length) {
+                        mMainLevelState = State.BossDoorUnlocked;
 
-                    UnlockBossDoor();
+                        UnlockBossDoor();
+
+                        Player.instance.Save();
+                    }
                 }
             }
         }
@@ -179,7 +210,10 @@ public class LevelController : MonoBehaviour {
     }
 
     public void eyeInsertSetFilled(int index, bool filled) {
-        mEyeInsertIsFilled[index] = filled;
+        if(mEyeInsertIsFilled[index] != filled) {
+            mEyeInsertIsFilled[index] = filled;
+            SaveMainLevelStates();
+        }
     }
 
     public void Save() {
@@ -236,6 +270,10 @@ public class LevelController : MonoBehaviour {
 
         //add eye orbs to player based on state
         StartCoroutine(DoAddPlayerEyeOrbs());
+
+        //for later use when restarting level
+        SceneState.instance.GlobalSnapshotSave();
+        UserData.instance.SnapshotSave();
     }
 
     void LoadMainLevelStates() {

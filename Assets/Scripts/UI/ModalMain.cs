@@ -21,7 +21,7 @@ public class ModalMain : UIController {
 
     void OnPlayClick(GameObject go) {
         if(UserSlotData.IsSlotExist(0))
-            UserSlotData.LoadSlot(0, false);
+            UserSlotData.LoadSlot(0, true);
         else
             UserSlotData.CreateSlot(0, "temp");
 

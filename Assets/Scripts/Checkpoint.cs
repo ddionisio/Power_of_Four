@@ -21,6 +21,8 @@ public class Checkpoint : SpecialTrigger {
             if(player.isSpawned) {
                 _Activate();
 
+                SceneState.instance.DeleteGlobalValue(PlayerStats.currentHPKey, false);
+
                 //set spawn point
                 LevelController.SetSavedLevel(Application.loadedLevelName, name);
 
