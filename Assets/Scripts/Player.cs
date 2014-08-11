@@ -35,6 +35,7 @@ public class Player : EntityBase {
     public Transform cameraPoint;
     public float cameraPointWallCheckDelay = 0.2f;
     public float cameraPointRevertDelay = 2.0f;
+    public bool cameraPointStartAttached;
 
     public Buddy[] buddies;
 
@@ -44,6 +45,9 @@ public class Player : EntityBase {
     public string actionIconDefault = "generic";
 
     public LayerMask triggerSpecialMask;
+
+    public float cameraSpeedNorm = 10.0f;
+    public float cameraSpeedMinScale = 0.5f;
 
     public event BuddyCallback buddyUnlockCallback;
 
@@ -193,7 +197,7 @@ public class Player : EntityBase {
     /// </summary>
     public void Save() {
         LevelController.instance.Save();
-                
+
         mStats.SaveState();
 
         PlayerSave.SaveData();
@@ -203,6 +207,9 @@ public class Player : EntityBase {
         PlayerPrefs.Save();
 
         UserData.instance.SetInt(savedBuddySelectedKey, mCurBuddyInd);
+
+        SceneState.instance.GlobalSnapshotDelete();
+        UserData.instance.SnapshotDelete();
 
         //show pop-up if available
     }
@@ -341,8 +348,6 @@ public class Player : EntityBase {
                 inputEnabled = false;
                 mUpIsPressed = false;
                 SetActionIcon(-1);
-
-                PlayerSave.UnloadData();
                 break;
         }
     }
@@ -465,7 +470,7 @@ public class Player : EntityBase {
 
         mBlinker = GetComponent<Blinker>();
         mBlinker.activeCallback += OnBlinkActive;
-                
+
         mActionIcons = new GameObject[actionIconHolder.childCount];
         for(int i = 0; i < mActionIcons.Length; i++) {
             mActionIcons[i] = actionIconHolder.GetChild(i).gameObject;
@@ -478,9 +483,14 @@ public class Player : EntityBase {
         base.Start();
 
         //set player's starting location based on saved spawn point, if there is one.
-        Vector3 spawnPt;
-        if(LevelController.GetSpawnPoint(out spawnPt)) {
-            transform.position = spawnPt;
+        Transform spawnPt = LevelController.GetSpawnPoint();
+        if(spawnPt) {
+            transform.position = spawnPt.position;
+            transform.rotation = spawnPt.rotation;
+        }
+
+        if(cameraPointStartAttached) {
+            CameraController.instance.attach = cameraPoint;
         }
     }
 
@@ -566,6 +576,8 @@ public class Player : EntityBase {
                 mUpIsPressed = false;
             }
         }
+
+        CameraController.instance.delayScale = Mathf.Clamp(1.0f - (mCtrl.isGrounded ? Mathf.Abs(mCtrl.localVelocity.x) : mCtrl.localVelocity.magnitude)/cameraSpeedNorm, cameraSpeedMinScale, 1.0f);
     }
 
     #region Stats/Weapons
@@ -883,7 +895,7 @@ public class Player : EntityBase {
 
     void OnSceneChange(string nextScene) {
         //save stuff
-        
+
     }
 
     IEnumerator DoDeathFinishDelay() {

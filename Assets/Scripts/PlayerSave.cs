@@ -36,14 +36,12 @@ public struct PlayerSave {
     public static int BuddyGetLevel(int ind) {
         if(!mLoaded) LoadData();
 
-        int dat = mBuddyLevelsDat;
-        if(ind > 0)
-            dat >>= ind*3;
+        int dat = mBuddyLevelsDat >> (ind*3);
         
         //CHEAT
-        return 1;
+        //return 1;
 
-        //return dat & 7;
+        return dat & 7;
     }
 
     public static void BuddySetLevel(int ind, int level) {

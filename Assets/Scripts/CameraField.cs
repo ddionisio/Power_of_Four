@@ -12,7 +12,6 @@ public class CameraField : MonoBehaviour {
     public string attachTag = "Player";
 
     public Color boundColor = Color.blue; //for gizmo
-    public float fuck;
     private CameraController mCamCtrl;
     private GameObject mAttachGO;
 

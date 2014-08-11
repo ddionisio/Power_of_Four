@@ -40,14 +40,14 @@ public abstract class Buddy : MonoBehaviour {
     public event Callback deactivateCallback;
     public event Callback levelChangeCallback;
 
-    private int mTakeEnterInd;
-    private int mTakeExitInd;
-    private int mTakeNormalInd;
-    private int mTakeNormalUpInd;
-    private int mTakeNormalDownInd;
-    private int mTakeAttackInd;
-    private int mTakeAttackUpInd;
-    private int mTakeAttackDownInd;
+    private int mTakeEnterInd = -1;
+    private int mTakeExitInd = -1;
+    private int mTakeNormalInd = -1;
+    private int mTakeNormalUpInd = -1;
+    private int mTakeNormalDownInd = -1;
+    private int mTakeAttackInd = -1;
+    private int mTakeAttackUpInd = -1;
+    private int mTakeAttackDownInd = -1;
 
     private int mLevel = 0;
 
@@ -166,7 +166,7 @@ public abstract class Buddy : MonoBehaviour {
             if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
 
             transform.localScale = Vector3.one;
-            transform.rotation = Quaternion.identity;
+            transform.localRotation = Quaternion.identity;
 
             ApplyAnimation();
 
@@ -180,7 +180,7 @@ public abstract class Buddy : MonoBehaviour {
         mIsFiring = false;
 
         transform.localScale = Vector3.one;
-        transform.rotation = Quaternion.identity;
+        transform.localRotation = Quaternion.identity;
     }
 
     void OnDestroy() {
@@ -210,14 +210,16 @@ public abstract class Buddy : MonoBehaviour {
         mLevel = PlayerSave.BuddyGetLevel(mInd);
 
         //setup data
-        mTakeEnterInd = mAnim.GetTakeIndex(takeEnter);
-        mTakeExitInd = mAnim.GetTakeIndex(takeExit);
-        mTakeNormalInd = mAnim.GetTakeIndex(takeNormal);
-        mTakeNormalUpInd = mAnim.GetTakeIndex(takeNormalUp);
-        mTakeNormalDownInd = mAnim.GetTakeIndex(takeNormalDown);
-        mTakeAttackInd = mAnim.GetTakeIndex(takeAttack);
-        mTakeAttackUpInd = mAnim.GetTakeIndex(takeAttackUp);
-        mTakeAttackDownInd = mAnim.GetTakeIndex(takeAttackDown);
+        if(mAnim) {
+            mTakeEnterInd = mAnim.GetTakeIndex(takeEnter);
+            mTakeExitInd = mAnim.GetTakeIndex(takeExit);
+            mTakeNormalInd = mAnim.GetTakeIndex(takeNormal);
+            mTakeNormalUpInd = mAnim.GetTakeIndex(takeNormalUp);
+            mTakeNormalDownInd = mAnim.GetTakeIndex(takeNormalDown);
+            mTakeAttackInd = mAnim.GetTakeIndex(takeAttack);
+            mTakeAttackUpInd = mAnim.GetTakeIndex(takeAttackUp);
+            mTakeAttackDownInd = mAnim.GetTakeIndex(takeAttackDown);
+        }
 
         OnInit();
 
@@ -284,7 +286,7 @@ public abstract class Buddy : MonoBehaviour {
         }
 
         OnExit();
-                
+
         gameObject.SetActive(false);
     }
 
@@ -292,19 +294,24 @@ public abstract class Buddy : MonoBehaviour {
 
     void ApplyAnimation() {
         //change animation
+        int takeInd = -1;
+
         switch(mDir) {
             case Dir.Up:
-                mAnim.Play(isFiring ? mTakeAttackUpInd : mTakeNormalUpInd);
+                takeInd = isFiring ? mTakeAttackUpInd : mTakeNormalUpInd;
                 break;
 
             case Dir.Down:
-                mAnim.Play(isFiring ? mTakeAttackDownInd : mTakeNormalDownInd);
+                takeInd = isFiring ? mTakeAttackDownInd : mTakeNormalDownInd;
                 break;
 
             case Dir.Front:
-                mAnim.Play(isFiring ? mTakeAttackInd : mTakeNormalInd);
+                takeInd = isFiring ? mTakeAttackInd : mTakeNormalInd;
                 break;
         }
+
+        if(takeInd != -1)
+            mAnim.Play(takeInd);
     }
 
     //Implements

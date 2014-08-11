@@ -38,7 +38,7 @@ public class BuddyRock : Buddy {
         else
             fireDir = Vector3.up;
 
-        projs[level - 1].Fire(pos, fireDir);
+        projs[level - 1].Fire(pos, transform.rotation*fireDir);
     }
 
     protected override void OnFireStop() { }

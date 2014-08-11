@@ -15,6 +15,9 @@ public class CameraController : MonoBehaviour {
     public float transitionDelay = 0.5f;
     public float transitionExpire = 1.0f;
 
+    public bool rotateEnabled;
+    public float rotateSpeed = 90f;
+
     private static CameraController mInstance;
 
     private Camera2D mCam;
@@ -24,14 +27,30 @@ public class CameraController : MonoBehaviour {
     private bool mDoTrans;
     private float mLastTransTime;
     private float mCurDelay;
+    private bool mFirstTimeSnap;
+    private float mDelayScale = 1.0f;
 
     public static CameraController instance { get { return mInstance; } }
+
+    /// <summary>
+    /// Lower value makes movement go faster. 1.0 = normal
+    /// </summary>
+    public float delayScale { get { return mDelayScale; } set { mDelayScale = value; } }
 
     public Transform attach {
         get { return mAttach; }
         set {
             if(mAttach != value) {
                 mAttach = value;
+
+                if(!mFirstTimeSnap) {
+                    if(mAttach) {
+                        transform.position = GetDest();
+                        transform.rotation = mAttach.rotation;
+                    }
+                    mFirstTimeSnap = true;
+                }
+
                 //mCurVel = Vector3.zero;
             }
         }
@@ -68,23 +87,7 @@ public class CameraController : MonoBehaviour {
         }
     }
 
-    // Update is called once per frame
-    void FixedUpdate() {
-        if(mode == Mode.Lock)
-            return;
-
-        if(mDoTrans) {
-            float curT = Time.fixedTime - mLastTransTime;
-            if(curT >= transitionExpire) {
-                mDoTrans = false;
-                mCurDelay = delay;
-            }
-            else {
-                float t = Mathf.Clamp(curT/transitionExpire, 0.0f, 1.0f);
-                mCurDelay = Mathf.Lerp(transitionDelay, delay, t);
-            }
-        }
-
+    Vector3 GetDest() {
         Vector3 curPos = transform.position;
         Vector3 dest = mAttach ? mAttach.collider ? mAttach.collider.bounds.center : mAttach.position : curPos;
         dest.z = curPos.z;
@@ -108,13 +111,48 @@ public class CameraController : MonoBehaviour {
             default:
                 break;
         }
+        return dest;
+    }
+
+    // Update is called once per frame
+    void FixedUpdate() {
+        if(mode == Mode.Lock)
+            return;
+
+        if(mDoTrans) {
+            float curT = Time.fixedTime - mLastTransTime;
+            if(curT >= transitionExpire) {
+                mDoTrans = false;
+                mCurDelay = delay;
+            }
+            else {
+                float t = Mathf.Clamp(curT/transitionExpire, 0.0f, 1.0f);
+                mCurDelay = Mathf.Lerp(transitionDelay, delay, t);
+            }
+        }
+
+        Vector3 curPos = transform.position;
+        Vector3 dest = GetDest();
 
         if(curPos != dest) {
             if(rigidbody) {
-                rigidbody.MovePosition(Vector3.SmoothDamp(curPos, dest, ref mCurVel, mCurDelay, Mathf.Infinity, Time.fixedDeltaTime));
+                rigidbody.MovePosition(Vector3.SmoothDamp(curPos, dest, ref mCurVel, mCurDelay*mDelayScale, Mathf.Infinity, Time.fixedDeltaTime));
             }
             else {
-                transform.position = Vector3.SmoothDamp(curPos, dest, ref mCurVel, mCurDelay, Mathf.Infinity, Time.fixedDeltaTime);
+                transform.position = Vector3.SmoothDamp(curPos, dest, ref mCurVel, mCurDelay*mDelayScale, Mathf.Infinity, Time.fixedDeltaTime);
+            }
+        }
+
+        if(rotateEnabled) {
+            Quaternion toRot = mAttach.rotation;
+            Quaternion curRot = transform.rotation;
+            if(curRot != toRot) {
+                if(rigidbody) {
+                    rigidbody.MoveRotation(Quaternion.RotateTowards(curRot, toRot, rotateSpeed*Time.fixedDeltaTime));
+                }
+                else {
+                    transform.rotation = Quaternion.RotateTowards(curRot, toRot, rotateSpeed*Time.fixedDeltaTime);
+                }
             }
         }
     }

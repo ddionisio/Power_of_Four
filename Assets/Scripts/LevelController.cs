@@ -60,6 +60,10 @@ public class LevelController : MonoBehaviour {
 
     public int eyeOrbCount { get { return mEyeOrbStates.Length; } }
 
+    public static State GetLevelState(string levelName) {
+        return (State)UserData.instance.GetInt(levelName+"_s", 0);
+    }
+
     public static void SetSavedLevel(string levelName, string spawnPoint) {
         if(string.IsNullOrEmpty(levelName)) {
             UserData.instance.Delete(saveLevelNameKey);
@@ -80,7 +84,7 @@ public class LevelController : MonoBehaviour {
         }
     }
 
-    public static bool GetSpawnPoint(out Vector3 pt) {
+    public static Transform GetSpawnPoint() {
         string goName;
 
         string spawnPointScene = SceneState.instance.GetGlobalValueString(spawnPointLevelNameKey, "");
@@ -104,24 +108,19 @@ public class LevelController : MonoBehaviour {
             //check for check point gos
             GameObject[] gos = GameObject.FindGameObjectsWithTag(Checkpoint.checkpointTagCheck);
             for(int i = 0; i < gos.Length; i++) {
-                if(gos[i].name == goName) {
-                    pt = gos[i].transform.position;
-                    return true;
-                }
+                if(gos[i].name == goName)
+                    return gos[i].transform;
             }
 
             //check for spawn point gos
             gos = GameObject.FindGameObjectsWithTag(spawnPointTagCheck);
             for(int i = 0; i < gos.Length; i++) {
-                if(gos[i].name == goName) {
-                    pt = gos[i].transform.position;
-                    return true;
-                }
+                if(gos[i].name == goName)
+                    return gos[i].transform;
             }
         }
 
-        pt = Vector3.zero;
-        return false;
+        return null;
     }
 
     /// <summary>
@@ -279,7 +278,7 @@ public class LevelController : MonoBehaviour {
     void LoadMainLevelStates() {
         string levelName = string.IsNullOrEmpty(mainLevel) ? Application.loadedLevelName : mainLevel;
 
-        mMainLevelState = (State)UserData.instance.GetInt(levelName+"_s", 0);
+        mMainLevelState = GetLevelState(levelName);
 
         int eyeStates = UserData.instance.GetInt(levelName+"_se", 0);
         int eyeInserts = UserData.instance.GetInt(levelName+"_sei", 0);
