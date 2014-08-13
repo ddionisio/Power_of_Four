@@ -39,6 +39,7 @@ public class UIPower : MonoBehaviour {
 
     void OnBuddyActivate(Buddy bud) {
         if(mAnim.currentPlayingTakeName != takeActive && mAnim.currentPlayingTakeName != takeActivate) {
+            gameObject.SetActive(true);
             if(mAction != null) StopCoroutine(mAction);
             StartCoroutine(mAction = DoAnim(takeActivate, takeActive));
         }

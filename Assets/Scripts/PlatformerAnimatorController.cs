@@ -249,7 +249,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
     }
 
     int GetMidAirClip(int[] clips) {
-        if(clips == null || clips.Length == 0)
+        if(clips == null || clips.Length == 0 || (anim.isPlaying && anim.currentPlayingTakeIndex == mWallJump))
             return -1;
 
         int ind = controller.jumpCounterCurrent;

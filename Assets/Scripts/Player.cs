@@ -36,6 +36,11 @@ public class Player : EntityBase {
     public float cameraPointWallCheckDelay = 0.2f;
     public float cameraPointRevertDelay = 2.0f;
     public bool cameraPointStartAttached;
+    public float cameraPointFallOfs = 2.0f;
+
+    public float cameraSpeedNorm = 10.0f;
+    public float cameraSpeedMinScale = 0.5f;
+    public float cameraSpeedMaxScale = 1.0f;
 
     public Buddy[] buddies;
 
@@ -45,10 +50,7 @@ public class Player : EntityBase {
     public string actionIconDefault = "generic";
 
     public LayerMask triggerSpecialMask;
-
-    public float cameraSpeedNorm = 10.0f;
-    public float cameraSpeedMinScale = 0.5f;
-
+        
     public event BuddyCallback buddyUnlockCallback;
 
     private static Player mInstance;
@@ -77,6 +79,7 @@ public class Player : EntityBase {
     private int mCurActionIconInd = -1;
     private bool mUpIsPressed = false;
     private bool mSpawned;
+    private bool mCameraIsWallStick;
 
     public static Player instance { get { return mInstance; } }
 
@@ -143,6 +146,8 @@ public class Player : EntityBase {
                         input.RemoveButtonCall(0, InputAction.Next, OnInputPowerNext);
 
                         mUpIsPressed = false;
+
+                        lookDir = LookDir.Front;
                     }
                 }
 
@@ -176,16 +181,18 @@ public class Player : EntityBase {
         set {
             if(mCurLook != value) {
                 mCurLook = value;
-                switch(mCurLook) {
-                    case LookDir.Front:
-                        look.rotation = Quaternion.identity;
-                        break;
-                    case LookDir.Up:
-                        look.rotation = Quaternion.Euler(0, 0, 90);
-                        break;
-                    case LookDir.Down:
-                        look.rotation = Quaternion.Euler(0, 0, -90);
-                        break;
+                if(look) {
+                    switch(mCurLook) {
+                        case LookDir.Front:
+                            look.localRotation = Quaternion.identity;
+                            break;
+                        case LookDir.Up:
+                            look.localRotation = Quaternion.Euler(0, 0, 90);
+                            break;
+                        case LookDir.Down:
+                            look.localRotation = Quaternion.Euler(0, 0, -90);
+                            break;
+                    }
                 }
             }
         }
@@ -348,6 +355,7 @@ public class Player : EntityBase {
                 inputEnabled = false;
                 mUpIsPressed = false;
                 SetActionIcon(-1);
+                mCameraIsWallStick = false;
                 break;
         }
     }
@@ -577,7 +585,14 @@ public class Player : EntityBase {
             }
         }
 
-        CameraController.instance.delayScale = Mathf.Clamp(1.0f - (mCtrl.isGrounded ? Mathf.Abs(mCtrl.localVelocity.x) : mCtrl.localVelocity.magnitude)/cameraSpeedNorm, cameraSpeedMinScale, 1.0f);
+        //
+        CameraController.instance.delayScale = Mathf.Clamp(1.0f - (mCtrl.isGrounded ? Mathf.Abs(mCtrl.localVelocity.x) : mCtrl.localVelocity.magnitude)/cameraSpeedNorm, cameraSpeedMinScale, cameraSpeedMaxScale);
+        if(!(mCtrl.isWallStick || mCameraIsWallStick)) {
+            if(mCtrl.isGrounded || mCtrl.localVelocity.y > 0)
+                cameraPoint.localPosition = mDefaultCameraPointLPos;
+            else
+                cameraPoint.localPosition = mDefaultCameraPointLPos - transform.up*cameraPointFallOfs;
+        }
     }
 
     #region Stats/Weapons
@@ -910,19 +925,19 @@ public class Player : EntityBase {
         WaitForSeconds waitCheck = new WaitForSeconds(cameraPointWallCheckDelay);
 
         float lastCheckTime = Time.fixedTime;
-        bool isCameraPointSet = false;
+        mCameraIsWallStick = false;
 
         while(true) {
-            if(isCameraPointSet && Time.fixedTime - lastCheckTime >= cameraPointRevertDelay) {
+            if(mCameraIsWallStick && Time.fixedTime - lastCheckTime >= cameraPointRevertDelay) {
                 cameraPoint.localPosition = mDefaultCameraPointLPos;
-                isCameraPointSet = false;
+                mCameraIsWallStick = false;
             }
 
             if(mCtrl.isWallStick) {
                 lastCheckTime = Time.fixedTime;
-                if(!isCameraPointSet) {
+                if(!mCameraIsWallStick) {
                     cameraPoint.localPosition = Vector3.zero;
-                    isCameraPointSet = true;
+                    mCameraIsWallStick = true;
                 }
             }
 
