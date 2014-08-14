@@ -36,6 +36,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
     public ParticleSystem wallStickParticle;
 
     public event Callback flipCallback;
+    public event Callback overrideSetCallback;
     public event CallbackClip clipFinishCallback;
     public event CallbackClipFrame clipFrameEventCallback;
 
@@ -117,6 +118,10 @@ public class PlatformerAnimatorController : MonoBehaviour {
         //assume its loop type is 'once'
         if(!string.IsNullOrEmpty(takeName)) {
             mOverrideTakeName = takeName;
+
+            if(overrideSetCallback != null)
+                overrideSetCallback(this);
+
             anim.Play(takeName);
         }
     }
@@ -124,6 +129,10 @@ public class PlatformerAnimatorController : MonoBehaviour {
     public void StopOverrideClip() {
         if(!string.IsNullOrEmpty(mOverrideTakeName)) {
             mOverrideTakeName = "";
+
+            if(overrideSetCallback != null)
+                overrideSetCallback(this);
+
             anim.Stop();
         }
     }
@@ -132,6 +141,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
         flipCallback = null;
         clipFinishCallback = null;
         clipFrameEventCallback = null;
+        overrideSetCallback = null;
     }
 
     void Awake() {
@@ -195,7 +205,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
                         wallStickParticle.Play();
                     }
 
-                    if(anim && mWallStick != -1) anim.Play(mWallStick);
+                    if(anim && mWallStick != -1 && (anim.isPlaying || anim.lastPlayingTakeIndex != mWallStick)) anim.Play(mWallStick);
 
                     left = M8.MathUtil.CheckSide(controller.wallStickCollide.normal, controller.dirHolder.up) == M8.MathUtil.Side.Right;
 
@@ -223,7 +233,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
                             else
                                 clipInd = GetMidAirClip(mUps);
 
-                            if(clipInd != -1)
+                            if(clipInd != -1 && (anim.isPlaying || anim.lastPlayingTakeIndex != clipInd))
                                 anim.Play(clipInd);
                         }
                     }
@@ -235,7 +245,7 @@ public class PlatformerAnimatorController : MonoBehaviour {
                 break;
 
             case State.Slide:
-                if(anim && mSlide != -1)
+                if(anim && mSlide != -1 && (anim.isPlaying || anim.lastPlayingTakeIndex != mSlide))
                     anim.Play(mSlide);
 
                 if(controller.moveSide != 0.0f) {
@@ -265,6 +275,13 @@ public class PlatformerAnimatorController : MonoBehaviour {
     }
 
     void OnAnimFinish(AnimatorData anim, AMTakeData take) {
+        if(take.name == mOverrideTakeName) {
+            mOverrideTakeName = "";
+
+            if(overrideSetCallback != null)
+                overrideSetCallback(this);
+        }
+
         if(clipFinishCallback != null)
             clipFinishCallback(this, take);
     }

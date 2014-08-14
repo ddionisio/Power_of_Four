@@ -16,6 +16,7 @@ public class Player : EntityBase {
     }
 
     public delegate void BuddyCallback(Player player, Buddy bud);
+    public delegate void Callback(Player player);
 
     public bool startLocked;
 
@@ -52,6 +53,8 @@ public class Player : EntityBase {
     public LayerMask triggerSpecialMask;
         
     public event BuddyCallback buddyUnlockCallback;
+    public event Callback buddyChangedCallback;
+    public event Callback lookDirChangedCallback;
 
     private static Player mInstance;
     private PlayerStats mStats;
@@ -103,6 +106,9 @@ public class Player : EntityBase {
                 else {
                     //remove hud elements
                 }
+
+                if(buddyChangedCallback != null)
+                    buddyChangedCallback(this);
             }
         }
     }
@@ -194,6 +200,9 @@ public class Player : EntityBase {
                             break;
                     }
                 }
+
+                if(lookDirChangedCallback != null)
+                    lookDirChangedCallback(this);
             }
         }
     }
@@ -410,6 +419,8 @@ public class Player : EntityBase {
         }
 
         buddyUnlockCallback = null;
+        buddyChangedCallback = null;
+        lookDirChangedCallback = null;
 
         base.OnDestroy();
     }
