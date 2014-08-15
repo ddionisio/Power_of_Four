@@ -51,7 +51,7 @@ public class Player : EntityBase {
     public string actionIconDefault = "generic";
 
     public LayerMask triggerSpecialMask;
-        
+
     public event BuddyCallback buddyUnlockCallback;
     public event Callback buddyChangedCallback;
     public event Callback lookDirChangedCallback;
@@ -504,7 +504,7 @@ public class Player : EntityBase {
         //set player's starting location based on saved spawn point, if there is one.
         Transform spawnPt = LevelController.GetSpawnPoint();
         if(spawnPt) {
-            transform.position = spawnPt.position;
+            transform.position = spawnPt.position + spawnPt.up*collider.bounds.extents.y;
             transform.rotation = spawnPt.rotation;
         }
 
@@ -569,16 +569,10 @@ public class Player : EntityBase {
             if(inpY < -inputDirThreshold) {
                 lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
 
-                if(currentBuddy)
-                    currentBuddy.dir = mCtrl.isGrounded ? Buddy.Dir.Front : Buddy.Dir.Down;
-
                 mUpIsPressed = false;
             }
             else if(inpY > inputDirThreshold) {
                 lookDir = LookDir.Up;
-
-                if(currentBuddy)
-                    currentBuddy.dir = Buddy.Dir.Up;
 
                 //check for pressed
                 if(!mUpIsPressed) {
@@ -588,9 +582,6 @@ public class Player : EntityBase {
             }
             else {
                 lookDir = LookDir.Front;
-
-                if(currentBuddy)
-                    currentBuddy.dir = Buddy.Dir.Front;
 
                 mUpIsPressed = false;
             }

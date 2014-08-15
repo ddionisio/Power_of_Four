@@ -4,12 +4,6 @@ using System.Collections;
 public abstract class Buddy : MonoBehaviour {
     public const string projGrp = "playerProj";
 
-    public enum Dir {
-        Front,
-        Up,
-        Down
-    }
-
     [System.Serializable]
     public struct LevelInfo {
         public string iconSpriteRef;
@@ -20,19 +14,8 @@ public abstract class Buddy : MonoBehaviour {
 
     public float fireRate;
 
-    public float idleFaceXMin = 0.15f;
-    public float idleFaceXDelay = 0.25f;
-
-    public string takeEnter = "enter";
-    public string takeExit = "exit";
-    public string takeNormal = "normal";
-    public string takeNormalUp = "normal_up";
-    public string takeNormalDown = "normal_down";
-    public string takeAttack = "attack";
-    public string takeAttackUp = "attack_up";
-    public string takeAttackDown = "attack_down";
-
-    public Transform projPoint;
+    [SerializeField]
+    Transform projPoint;
 
     public LevelInfo[] levelInfos;
 
@@ -40,18 +23,7 @@ public abstract class Buddy : MonoBehaviour {
     public event Callback deactivateCallback;
     public event Callback levelChangeCallback;
 
-    private int mTakeEnterInd = -1;
-    private int mTakeExitInd = -1;
-    private int mTakeNormalInd = -1;
-    private int mTakeNormalUpInd = -1;
-    private int mTakeNormalDownInd = -1;
-    private int mTakeAttackInd = -1;
-    private int mTakeAttackUpInd = -1;
-    private int mTakeAttackDownInd = -1;
-
     private int mLevel = 0;
-
-    private AnimatorData mAnim;
 
     private IEnumerator mCurAct;
 
@@ -60,9 +32,9 @@ public abstract class Buddy : MonoBehaviour {
     private bool mIsFiring = false;
     private float mLastFireTime;
 
-    private Dir mDir;
-
     private int mInd = -1;
+
+    private Player.LookDir mDir;
 
     /// <summary>
     /// Get Level, 0 == locked. Subtract 1 when using as index.
@@ -84,18 +56,37 @@ public abstract class Buddy : MonoBehaviour {
 
     public int index { get { return mInd; } }
 
-    public virtual Dir dir {
+    public virtual Player.LookDir dir {
         get { return mDir; }
-        set {
-            //note: change this behaviour for tentacle, lock direction while charging
-            if(mDir != value) {
-                mDir = value;
-                ApplyAnimation();
-            }
+    }
+
+    public Vector3 firePos {
+        get {
+            Vector3 ret = projPoint.position; ret.z = 0.0f;
+            return ret;
         }
     }
 
-    public AnimatorData anim { get { return mAnim; } }
+    public Vector3 fireDirLocal {
+        get {
+            Vector3 fireDir;
+            if(mDir == Player.LookDir.Front) {
+                fireDir = Mathf.Sign(projPoint.lossyScale.x) < 0.0f ? Vector3.left : Vector3.right;
+            }
+            else if(mDir == Player.LookDir.Down)
+                fireDir = Vector3.down;
+            else
+                fireDir = Vector3.up;
+            return fireDir;
+        }
+    }
+
+    public Vector3 fireDirWorld {
+        get {
+            return transform.rotation*fireDirLocal;
+        }
+    }
+
     public bool isActive { get { return gameObject.activeSelf; } }
     public bool isFiring { get { return mIsFiring; } }
 
@@ -150,12 +141,10 @@ public abstract class Buddy : MonoBehaviour {
             //cancel other actions
             if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
 
-            ApplyAnimation();
+            OnFireStart();
 
             //start
             StartCoroutine(mCurAct = DoFiring());
-
-            OnFireStart();
         }
     }
 
@@ -167,8 +156,6 @@ public abstract class Buddy : MonoBehaviour {
 
             transform.localScale = Vector3.one;
             transform.localRotation = Quaternion.identity;
-
-            ApplyAnimation();
 
             OnFireStop();
         }
@@ -190,8 +177,6 @@ public abstract class Buddy : MonoBehaviour {
     }
 
     void Awake() {
-        mAnim = GetComponent<AnimatorData>();
-
         //determine index
         Player player = Player.instance;
         for(int i = 0; i < player.buddies.Length; i++) {
@@ -200,6 +185,8 @@ public abstract class Buddy : MonoBehaviour {
                 break;
             }
         }
+
+        player.lookDirChangedCallback += OnPlayerChangeDir;
     }
 
     // Use this for initialization
@@ -208,18 +195,6 @@ public abstract class Buddy : MonoBehaviour {
 
         //load level from save
         mLevel = PlayerSave.BuddyGetLevel(mInd);
-
-        //setup data
-        if(mAnim) {
-            mTakeEnterInd = mAnim.GetTakeIndex(takeEnter);
-            mTakeExitInd = mAnim.GetTakeIndex(takeExit);
-            mTakeNormalInd = mAnim.GetTakeIndex(takeNormal);
-            mTakeNormalUpInd = mAnim.GetTakeIndex(takeNormalUp);
-            mTakeNormalDownInd = mAnim.GetTakeIndex(takeNormalDown);
-            mTakeAttackInd = mAnim.GetTakeIndex(takeAttack);
-            mTakeAttackUpInd = mAnim.GetTakeIndex(takeAttackUp);
-            mTakeAttackDownInd = mAnim.GetTakeIndex(takeAttackDown);
-        }
 
         OnInit();
 
@@ -230,6 +205,14 @@ public abstract class Buddy : MonoBehaviour {
         }
         else
             gameObject.SetActive(false);
+    }
+
+
+    //Internal
+
+    void OnPlayerChangeDir(Player player) {
+        mDir = player.lookDir;
+        OnDirChange();
     }
 
     IEnumerator DoFiring() {
@@ -255,17 +238,9 @@ public abstract class Buddy : MonoBehaviour {
         if(activateCallback != null)
             activateCallback(this);
 
-        if(mTakeEnterInd != -1) {
-            //make sure it's not looped!
-            mAnim.Play(mTakeEnterInd);
-
-            while(mAnim.isPlaying)
-                yield return wait;
-        }
+        yield return StartCoroutine(OnEntering());
 
         mCurAct = null;
-
-        ApplyAnimation();
 
         OnEnter();
     }
@@ -277,42 +252,15 @@ public abstract class Buddy : MonoBehaviour {
         if(deactivateCallback != null)
             deactivateCallback(this);
 
-        if(mTakeExitInd != -1) {
-            //make sure it's not looped!
-            mAnim.Play(mTakeExitInd);
-
-            while(mAnim.isPlaying)
-                yield return wait;
-        }
+        yield return StartCoroutine(OnExiting());
 
         OnExit();
+
+        mCurAct = null;
 
         gameObject.SetActive(false);
     }
 
-    //Internal
-
-    void ApplyAnimation() {
-        //change animation
-        int takeInd = -1;
-
-        switch(mDir) {
-            case Dir.Up:
-                takeInd = isFiring ? mTakeAttackUpInd : mTakeNormalUpInd;
-                break;
-
-            case Dir.Down:
-                takeInd = isFiring ? mTakeAttackDownInd : mTakeNormalDownInd;
-                break;
-
-            case Dir.Front:
-                takeInd = isFiring ? mTakeAttackInd : mTakeNormalInd;
-                break;
-        }
-
-        if(takeInd != -1)
-            mAnim.Play(takeInd);
-    }
 
     //Implements
 
@@ -326,10 +274,16 @@ public abstract class Buddy : MonoBehaviour {
     /// </summary>
     protected virtual void OnEnter() { }
 
+    protected virtual IEnumerator OnEntering() { yield break; }
+
     /// <summary>
     /// Called once we exit during deactivate
     /// </summary>
     protected virtual void OnExit() { }
+
+    protected virtual IEnumerator OnExiting() { yield break; }
+
+    protected virtual void OnDirChange() { }
 
     /// <summary>
     /// Called when we are about to fire stuff

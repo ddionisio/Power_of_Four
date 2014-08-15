@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: c1d5a4ff9dd408746a246fc168cd3a01
+guid: 6e8fcc06d3b219f44b61e855f7a60b26
 TextureImporter:
   fileIDToRecycleName:
-    21300000: player_move0
+    21300000: water_eye
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,8 +35,8 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 7
-  spritePivot: {x: .5, y: .5}
+  alignment: 9
+  spritePivot: {x: .5, y: .150000006}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32
   alphaIsTransparency: 1
@@ -44,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: Temp
+  spritePackingTag: Player
   userData: 

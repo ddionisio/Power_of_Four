@@ -27,18 +27,7 @@ public class BuddyRock : Buddy {
     protected override void OnFireStart() { }
 
     protected override void OnFire() {
-        Vector3 pos = projPoint.position; pos.z = 0.0f;
-
-        Vector3 fireDir;
-        if(dir == Dir.Front) {
-            fireDir = projPoint.lossyScale.x < 0.0f ? Vector3.left : Vector3.right;
-        }
-        else if(dir == Dir.Down)
-            fireDir = Vector3.down;
-        else
-            fireDir = Vector3.up;
-
-        projs[level - 1].Fire(pos, transform.rotation*fireDir);
+        projs[level - 1].Fire(firePos, fireDirWorld);
     }
 
     protected override void OnFireStop() { }
