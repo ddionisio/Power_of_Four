@@ -275,12 +275,12 @@ public class PlatformerAnimatorController : MonoBehaviour {
     }
 
     void OnAnimFinish(AnimatorData anim, AMTakeData take) {
-        if(take.name == mOverrideTakeName) {
-            mOverrideTakeName = "";
+        //if(take.name == mOverrideTakeName) {
+            //mOverrideTakeName = "";
 
-            if(overrideSetCallback != null)
-                overrideSetCallback(this);
-        }
+            //if(overrideSetCallback != null)
+                //overrideSetCallback(this);
+        //}
 
         if(clipFinishCallback != null)
             clipFinishCallback(this, take);

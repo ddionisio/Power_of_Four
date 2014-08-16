@@ -523,7 +523,8 @@ public class PlatformerController : RigidBodyController {
 
             if(isUnderWater && !isGrounded) {
                 //move forward upwards
-                Move(dirRot, Vector3.up, Vector3.right, new Vector2(moveX, moveY), moveForce);
+                //Move(dirRot, Vector3.up, Vector3.right, new Vector2(moveX, moveY), moveForce);
+                //TODO: use jump
             }
             else if(mWallSticking) {
                 if(wallStickPush) {

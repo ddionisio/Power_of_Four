@@ -23,18 +23,18 @@ public abstract class Buddy : MonoBehaviour {
     public event Callback deactivateCallback;
     public event Callback levelChangeCallback;
 
+    /// <summary>
+    /// This is in fixed time when last call to OnFire occurred. (can be overriden by certain buddies)
+    /// </summary>
+    protected float mLastFireTime;
+
     private int mLevel = 0;
 
     private IEnumerator mCurAct;
 
-    private bool mStarted = false;
-    private bool mStartSetActivate = false;
     private bool mIsFiring = false;
-    private float mLastFireTime;
-
+    
     private int mInd = -1;
-
-    private Player.LookDir mDir;
 
     /// <summary>
     /// Get Level, 0 == locked. Subtract 1 when using as index.
@@ -56,9 +56,7 @@ public abstract class Buddy : MonoBehaviour {
 
     public int index { get { return mInd; } }
 
-    public virtual Player.LookDir dir {
-        get { return mDir; }
-    }
+    public virtual Player.LookDir dir { get { return Player.instance ? Player.instance.lookDir : Player.LookDir.Invalid; } }
 
     public Vector3 firePos {
         get {
@@ -70,13 +68,17 @@ public abstract class Buddy : MonoBehaviour {
     public Vector3 fireDirLocal {
         get {
             Vector3 fireDir;
-            if(mDir == Player.LookDir.Front) {
-                fireDir = Mathf.Sign(projPoint.lossyScale.x) < 0.0f ? Vector3.left : Vector3.right;
+            switch(dir) {
+                case Player.LookDir.Front:
+                    fireDir = Mathf.Sign(projPoint ? projPoint.lossyScale.x : transform.lossyScale.x) < 0.0f ? Vector3.left : Vector3.right;
+                    break;
+                case Player.LookDir.Down:
+                    fireDir = Vector3.down;
+                    break;
+                default:
+                    fireDir = Vector3.up;
+                    break;
             }
-            else if(mDir == Player.LookDir.Down)
-                fireDir = Vector3.down;
-            else
-                fireDir = Vector3.up;
             return fireDir;
         }
     }
@@ -104,23 +106,18 @@ public abstract class Buddy : MonoBehaviour {
     /// </summary>
     /// <param name="act"></param>
     public void Activate() {
-        if(mStarted) {
-            if(gameObject.activeSelf) {
-                if(!mIsFiring) {
-                    if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
-                    mIsFiring = false;
-
-                    StartCoroutine(mCurAct = DoEnter());
-                }
-            }
-            else {
-                gameObject.SetActive(true);
+        if(gameObject.activeSelf) {
+            if(!mIsFiring) {
+                if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
+                mIsFiring = false;
 
                 StartCoroutine(mCurAct = DoEnter());
             }
         }
-        else { //we haven't started, so call Activate during Start
-            mStartSetActivate = true;
+        else {
+            gameObject.SetActive(true);
+
+            StartCoroutine(mCurAct = DoEnter());
         }
     }
 
@@ -161,6 +158,17 @@ public abstract class Buddy : MonoBehaviour {
         }
     }
 
+    public void Init(Player player, int index) {
+        mInd = index;
+
+        //load level from save
+        mLevel = PlayerSave.BuddyGetLevel(mInd);
+
+        player.lookDirChangedCallback += OnPlayerChangeDir;
+
+        OnInit();
+    }
+
     void OnDisable() {
         if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
 
@@ -176,42 +184,9 @@ public abstract class Buddy : MonoBehaviour {
         levelChangeCallback = null;
     }
 
-    void Awake() {
-        //determine index
-        Player player = Player.instance;
-        for(int i = 0; i < player.buddies.Length; i++) {
-            if(player.buddies[i] == this) {
-                mInd = i;
-                break;
-            }
-        }
-
-        player.lookDirChangedCallback += OnPlayerChangeDir;
-    }
-
-    // Use this for initialization
-    void Start() {
-        mStarted = true;
-
-        //load level from save
-        mLevel = PlayerSave.BuddyGetLevel(mInd);
-
-        OnInit();
-
-        //activate
-        if(mStartSetActivate) {
-            Activate();
-            mStartSetActivate = false;
-        }
-        else
-            gameObject.SetActive(false);
-    }
-
-
     //Internal
 
     void OnPlayerChangeDir(Player player) {
-        mDir = player.lookDir;
         OnDirChange();
     }
 
@@ -219,11 +194,9 @@ public abstract class Buddy : MonoBehaviour {
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
         while(true) {
-            if(Time.fixedTime - mLastFireTime >= fireRate) {
+            if(Time.fixedTime - mLastFireTime >= fireRate && canFire) {
                 mLastFireTime = Time.fixedTime;
-
-                if(canFire)
-                    OnFire();
+                OnFire();
             }
 
             yield return wait;
@@ -231,30 +204,25 @@ public abstract class Buddy : MonoBehaviour {
     }
 
     IEnumerator DoEnter() {
-        WaitForFixedUpdate wait = new WaitForFixedUpdate();
-
-        yield return wait;
+        yield return new WaitForFixedUpdate();
 
         if(activateCallback != null)
             activateCallback(this);
 
-        yield return StartCoroutine(OnEntering());
+        OnEnter();
+
+        yield return StartCoroutine(mCurAct = OnEntering());
 
         mCurAct = null;
-
-        OnEnter();
     }
 
     IEnumerator DoExit() {
-        WaitForFixedUpdate wait = new WaitForFixedUpdate();
-        yield return wait;
-
         if(deactivateCallback != null)
             deactivateCallback(this);
 
-        yield return StartCoroutine(OnExiting());
-
         OnExit();
+
+        yield return StartCoroutine(mCurAct = OnExiting());
 
         mCurAct = null;
 

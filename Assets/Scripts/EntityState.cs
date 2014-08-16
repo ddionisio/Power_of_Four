@@ -15,6 +15,7 @@
     // specific for player
     Lock,
     Victory,
+    Charge,
 
     // special cases
     Final, //once the final boss is defeated.

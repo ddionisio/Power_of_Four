@@ -6,10 +6,12 @@ public class Player : EntityBase {
     public const string lastBuddySelectedKey = "lb"; //when going to the next level, stored in SceneState global
 
     public const string takeHurt = "hurt";
+    public const string takeCharge = "charge";
 
     public const float inputDirThreshold = 0.5f;
 
     public enum LookDir {
+        Invalid = -1,
         Front,
         Up,
         Down
@@ -46,6 +48,7 @@ public class Player : EntityBase {
     public Buddy[] buddies;
 
     public Transform eyeOrbPoint;
+    public Transform rotatePoint; //used for charging
 
     public Transform actionIconHolder;
     public string actionIconDefault = "generic";
@@ -67,6 +70,7 @@ public class Player : EntityBase {
     private Vector3 mDefaultColliderCenter;
     private float mDefaultColliderHeight;
     private Vector3 mDefaultCameraPointLPos;
+    private float mDefaultGravity;
     private CapsuleCollider mCapsuleColl;
     private bool mInputEnabled;
     private bool mSliding;
@@ -261,6 +265,22 @@ public class Player : EntityBase {
                 if(mCurActionIconInd != -1)
                     mActionIcons[mCurActionIconInd].SetActive(true);
                 break;
+
+            case EntityState.Charge:
+                inputEnabled = true;
+
+                mStats.isInvul = false;
+
+                mCtrl.moveSideLock = false;
+                mCtrl.lockDrag = false;
+                mCtrl.wallStick = true;
+                mCtrl.moveForce = mDefaultCtrlMoveForce;
+                mCtrl.moveMaxSpeed = mDefaultCtrlMoveMaxSpeed;
+                mCtrl.gravityController.gravity = mDefaultGravity;
+                mCtrlAnim.StopOverrideClip();
+
+                rotatePoint.localRotation = Quaternion.identity;
+                break;
         }
 
         switch((EntityState)state) {
@@ -326,6 +346,30 @@ public class Player : EntityBase {
                 LockControls();
                 break;
 
+            case EntityState.Charge:
+                LookDir lastLookDir = lookDir;
+
+                LockControls(false);
+                mCtrl.gravityController.gravity = 0.0f;
+                mCtrl.lockDrag = true;
+                mCtrl.wallStick = false;
+                mCtrlAnim.PlayOverrideClip(takeCharge);
+
+                lookDir = lastLookDir;
+
+                switch(mCurLook) {
+                    case LookDir.Up:
+                        rotatePoint.localRotation = Quaternion.identity;
+                        break;
+                    case LookDir.Front:
+                        rotatePoint.localRotation = Quaternion.Euler(0, 0, -90);
+                        break;
+                    case LookDir.Down:
+                        rotatePoint.localRotation = Quaternion.Euler(0, 0, 180);
+                        break;
+                }
+                break;
+
             case EntityState.Victory:
                 UIModalManager.instance.ModalCloseAll();
 
@@ -369,15 +413,17 @@ public class Player : EntityBase {
         }
     }
 
-    void LockControls() {
+    void LockControls(bool includePause = true) {
         SetSlide(false);
 
         //disable all input
         inputEnabled = false;
 
-        InputManager input = InputManager.instance;
-        if(input) {
-            input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
+        if(includePause) {
+            InputManager input = InputManager.instance;
+            if(input) {
+                input.RemoveButtonCall(0, InputAction.MenuCancel, OnInputPause);
+            }
         }
         //
 
@@ -476,6 +522,8 @@ public class Player : EntityBase {
         mDefaultCtrlMoveMaxSpeed = mCtrl.moveMaxSpeed;
         mDefaultCtrlMoveForce = mCtrl.moveForce;
 
+        mDefaultGravity = mCtrl.gravityController.gravity;
+
         mCtrlAnim = GetComponent<PlatformerAnimatorController>();
 
         mCapsuleColl = collider as CapsuleCollider;
@@ -494,6 +542,10 @@ public class Player : EntityBase {
         for(int i = 0; i < mActionIcons.Length; i++) {
             mActionIcons[i] = actionIconHolder.GetChild(i).gameObject;
             mActionIcons[i].SetActive(false);
+        }
+
+        for(int i = 0; i < buddies.Length; i++) {
+            buddies[i].Init(this, i);
         }
     }
 
