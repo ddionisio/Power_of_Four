@@ -9,36 +9,33 @@ public class CameraField : MonoBehaviour {
     public CameraController.Mode mode;
     public bool doTransition = true;
 
-    public string attachTag = "Player";
+    public string attachFindTag = "Player"; //if attach is null
+    public CameraAttach attach;
 
     public Color boundColor = Color.blue; //for gizmo
     private CameraController mCamCtrl;
-    private GameObject mAttachGO;
 
     void OnTriggerEnter(Collider col) {
-        if(mAttachGO == null)
-            mAttachGO = GameObject.FindGameObjectWithTag(attachTag);
+        mCamCtrl.mode = mode;
 
-        if(mAttachGO) {
-            mCamCtrl.mode = mode;
-            
-            Bounds setBounds = bounds;
-            setBounds.center += transform.position;
-            
-            mCamCtrl.bounds = setBounds;
-            
-            mCamCtrl.attach = mAttachGO.transform;
-            
-            mCamCtrl.SetTransition(doTransition);
-        }
-    }
+        Bounds setBounds = bounds;
+        setBounds.center += transform.position;
 
-    void OnDestroy() {
-        mAttachGO = null;
+        mCamCtrl.bounds = setBounds;
+
+        mCamCtrl.attach = attach;
+
+        mCamCtrl.SetTransition(doTransition);
     }
 
     void Awake() {
         mCamCtrl = CameraController.instance;
+
+        if(attach == null) {
+            GameObject go = GameObject.FindGameObjectWithTag(attachFindTag);
+            if(go)
+                attach = go.GetComponent<CameraAttach>();
+        }
     }
 
     void OnDrawGizmos() {

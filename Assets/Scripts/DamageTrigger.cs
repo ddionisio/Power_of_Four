@@ -10,6 +10,14 @@ public class DamageTrigger : MonoBehaviour {
 
     public Damage damage { get { return mDmg; } }
 
+    protected void DoDamage(Collider col) {
+        if(mDmg.CallDamageTo(col.gameObject, transform.position, (col.bounds.center - transform.position).normalized)) {
+            if(damageCallback != null) {
+                damageCallback(this, col.gameObject);
+            }
+        }
+    }
+
     void OnDestroy() {
         damageCallback = null;
     }
@@ -19,10 +27,6 @@ public class DamageTrigger : MonoBehaviour {
     }
 
     void OnTriggerStay(Collider col) {
-        if(mDmg.CallDamageTo(col.gameObject, transform.position, (col.bounds.center - transform.position).normalized)) {
-            if(damageCallback != null) {
-                damageCallback(this, col.gameObject);
-            }
-        }
+        DoDamage(col);
     }
 }

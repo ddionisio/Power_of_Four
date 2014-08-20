@@ -42,6 +42,8 @@ public class Enemy : EntityBase {
 
     private IEnumerator mCurStateAction;
 
+    private Grab mGrab;
+
     public EnemyStats stats { get { return mStats; } }
     public PlatformerController bodyCtrl { get { return mCtrl; } }
     public GravityController gravityCtrl { get { return mCtrlGravity; } }
@@ -137,6 +139,16 @@ public class Enemy : EntityBase {
             case EntityState.Normal:
                 Jump(0.0f);
                 break;
+
+            case EntityState.Knocked:
+                if(state != (int)EntityState.Thrown) {
+                    SetPhysicsActive(true, false);
+                }
+                break;
+
+            case EntityState.Thrown:
+                SetPhysicsActive(true, false);
+                break;
         }
 
         if(mCurStateAction != null) {
@@ -152,15 +164,35 @@ public class Enemy : EntityBase {
                     animatorControl.PlayDefault();
 
                 SetDamageTriggerActive(true);
+
+                if(mGrab) mGrab.isGrabbable = true;
                 break;
 
             case EntityState.Knocked:
                 SetDamageTriggerActive(false);
 
                 Jump(knockJumpDelay);
+
+                if(mGrab) mGrab.isGrabbable = true;
+                break;
+
+            case EntityState.Grabbed:
+                SetPhysicsActive(false, true);
+                if(mBody)
+                    mBody.isKinematic = false;
+                mBody.drag = 0.0f;
+
+                PlayAnim(takeGrabbed);
+                break;
+
+            case EntityState.Thrown:
+                SetPhysicsActive(false, false);
+                PlayAnim(takeThrown);
                 break;
 
             case EntityState.Dead:
+                if(mGrab) mGrab.isGrabbable = false;
+
                 if(disablePhysicsOnDeath)
                     SetPhysicsActive(false, false);
 
@@ -211,6 +243,8 @@ public class Enemy : EntityBase {
                     mMatPropCtrls[i].Revert();
 
                 SetPhysicsActive(false, false);
+
+                if(mGrab) mGrab.isGrabbable = false;
                 break;
         }
 
@@ -269,6 +303,11 @@ public class Enemy : EntityBase {
         mMatPropCtrls = GetComponentsInChildren<MaterialFloatPropertyControl>(true);
 
         SetPhysicsActive(false, false);
+
+        //get grab stuff
+        mGrab = GetComponent<Grab>();
+        if(mGrab)
+            mGrab.actionCallback += OnGrabAction;
     }
 
     // Use this for initialization
@@ -407,6 +446,20 @@ public class Enemy : EntityBase {
     //If no animation controller
     void OnAnimEnd(AnimatorData animDat, AMTakeData take) {
         AnimEndProcess(take);
+    }
+
+    void OnGrabAction(Grab grab, Grab.Action act) {
+        switch(act) {
+            case Grab.Action.Grabbed:
+                state = (int)EntityState.Grabbed;
+                break;
+            case Grab.Action.Thrown:
+                state = (int)EntityState.Thrown;
+                break;
+            case Grab.Action.Impact:
+                state = (int)EntityState.Dead;
+                break;
+        }
     }
 
     private const string JumpFinishKey = "JumpFinish";

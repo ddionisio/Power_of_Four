@@ -33,17 +33,7 @@ public class Player : EntityBase {
     public GameObject slideGOActive; //object to activate while sliding
     public LayerMask solidMask; //use for standing up, etc.
 
-    public Transform look;
-
-    public Transform cameraPoint;
-    public float cameraPointWallCheckDelay = 0.2f;
-    public float cameraPointRevertDelay = 2.0f;
     public bool cameraPointStartAttached;
-    public float cameraPointFallOfs = 2.0f;
-
-    public float cameraSpeedNorm = 10.0f;
-    public float cameraSpeedMinScale = 0.5f;
-    public float cameraSpeedMaxScale = 1.0f;
 
     public Buddy[] buddies;
 
@@ -69,7 +59,6 @@ public class Player : EntityBase {
     private float mDefaultCtrlMoveMaxSpeed;
     private Vector3 mDefaultColliderCenter;
     private float mDefaultColliderHeight;
-    private Vector3 mDefaultCameraPointLPos;
     private float mDefaultGravity;
     private CapsuleCollider mCapsuleColl;
     private bool mInputEnabled;
@@ -86,7 +75,6 @@ public class Player : EntityBase {
     private int mCurActionIconInd = -1;
     private bool mUpIsPressed = false;
     private bool mSpawned;
-    private bool mCameraIsWallStick;
 
     public static Player instance { get { return mInstance; } }
 
@@ -102,14 +90,8 @@ public class Player : EntityBase {
                     buddies[prevBuddyInd].Deactivate();
 
                 //activate new one
-                if(mCurBuddyInd >= 0) {
+                if(mCurBuddyInd >= 0)
                     buddies[mCurBuddyInd].Activate();
-
-                    //change hud elements
-                }
-                else {
-                    //remove hud elements
-                }
 
                 if(buddyChangedCallback != null)
                     buddyChangedCallback(this);
@@ -191,19 +173,6 @@ public class Player : EntityBase {
         set {
             if(mCurLook != value) {
                 mCurLook = value;
-                if(look) {
-                    switch(mCurLook) {
-                        case LookDir.Front:
-                            look.localRotation = Quaternion.identity;
-                            break;
-                        case LookDir.Up:
-                            look.localRotation = Quaternion.Euler(0, 0, 90);
-                            break;
-                        case LookDir.Down:
-                            look.localRotation = Quaternion.Euler(0, 0, -90);
-                            break;
-                    }
-                }
 
                 if(lookDirChangedCallback != null)
                     lookDirChangedCallback(this);
@@ -408,7 +377,6 @@ public class Player : EntityBase {
                 inputEnabled = false;
                 mUpIsPressed = false;
                 SetActionIcon(-1);
-                mCameraIsWallStick = false;
                 break;
         }
     }
@@ -496,7 +464,7 @@ public class Player : EntityBase {
         //initialize some things
 
         //start ai, player control, etc
-        StartCoroutine(DoCameraPointWallCheck());
+        //StartCoroutine(DoCameraPointWallCheck());
     }
 
     protected override void Awake() {
@@ -530,8 +498,6 @@ public class Player : EntityBase {
         mDefaultColliderCenter = mCapsuleColl.center;
         mDefaultColliderHeight = mCapsuleColl.height;
 
-        mDefaultCameraPointLPos = cameraPoint.localPosition;
-
         mStats = GetComponent<PlayerStats>();
         mStats.changeHPCallback += OnStatsHPChange;
 
@@ -561,7 +527,7 @@ public class Player : EntityBase {
         }
 
         if(cameraPointStartAttached) {
-            CameraController.instance.attach = cameraPoint;
+            CameraController.instance.attach = GetComponent<CameraAttach>();
         }
     }
 
@@ -637,15 +603,6 @@ public class Player : EntityBase {
 
                 mUpIsPressed = false;
             }
-        }
-
-        //
-        CameraController.instance.delayScale = Mathf.Clamp(1.0f - (mCtrl.isGrounded ? Mathf.Abs(mCtrl.localVelocity.x) : mCtrl.localVelocity.magnitude)/cameraSpeedNorm, cameraSpeedMinScale, cameraSpeedMaxScale);
-        if(!(mCtrl.isWallStick || mCameraIsWallStick)) {
-            if(mCtrl.isGrounded || mCtrl.localVelocity.y > 0)
-                cameraPoint.localPosition = mDefaultCameraPointLPos;
-            else
-                cameraPoint.localPosition = mDefaultCameraPointLPos - transform.up*cameraPointFallOfs;
         }
     }
 
@@ -973,30 +930,6 @@ public class Player : EntityBase {
         SceneState.instance.GlobalSnapshotRestore();
         UserData.instance.SnapshotRestore();
         SceneManager.instance.Reload();
-    }
-
-    IEnumerator DoCameraPointWallCheck() {
-        WaitForSeconds waitCheck = new WaitForSeconds(cameraPointWallCheckDelay);
-
-        float lastCheckTime = Time.fixedTime;
-        mCameraIsWallStick = false;
-
-        while(true) {
-            if(mCameraIsWallStick && Time.fixedTime - lastCheckTime >= cameraPointRevertDelay) {
-                cameraPoint.localPosition = mDefaultCameraPointLPos;
-                mCameraIsWallStick = false;
-            }
-
-            if(mCtrl.isWallStick) {
-                lastCheckTime = Time.fixedTime;
-                if(!mCameraIsWallStick) {
-                    cameraPoint.localPosition = Vector3.zero;
-                    mCameraIsWallStick = true;
-                }
-            }
-
-            yield return waitCheck;
-        }
     }
 
     void OnRigidbodyCollisionEnter(RigidBodyController controller, Collision col) {

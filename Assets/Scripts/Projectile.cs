@@ -49,7 +49,7 @@ public class Projectile : EntityBase {
     public float seekVelocity;
     public float seekVelocityCap = 5.0f;
     public float seekTurnAngleCap = 360.0f;
-    public bool decayEnabled = true;
+    public bool decayEnabled = false;
     public float decayDelay;
     public bool releaseOnDie = true;
     public float dieDelay;
@@ -67,7 +67,6 @@ public class Projectile : EntityBase {
     public int maxBounce = -1;
     public float bounceRotateAngle;
     public float bounceSurfaceOfs; //displace projectile slightly off surface based on normal
-    public bool bounceRigidbodyApplyVelocity = true;
     public bool explodeOnDeath;
     public Transform applyDirToUp;
     public LayerMask EndByContactMask; //if not 0, use death contact mask to determine if we die based on layer
@@ -367,18 +366,6 @@ public class Projectile : EntityBase {
         }
     }
 
-    bool CheckHitTag(string tag) {
-        if(hitTags.Length == 0)
-            return true;
-
-        for(int i = 0, max = hitTags.Length; i < max; i++) {
-            if(hitTags[i] == tag)
-                return true;
-        }
-
-        return false;
-    }
-
     protected virtual void OnHPChange(Stats stat, float delta) {
         if(stat.curHP == 0) {
             if(isAlive)
@@ -430,9 +417,6 @@ public class Projectile : EntityBase {
                             }
 
                             Vector3 reflVel = Vector3.Reflect(rigidbody.velocity, normal);
-
-                            /*if(bounceRigidbodyApplyVelocity)
-                                rigidbody.velocity = reflVel;*/
 
                             //TODO: this is only for 2D
                             switch(forceBounce) {
@@ -519,11 +503,11 @@ public class Projectile : EntityBase {
     }
 
     void ApplyDamage(GameObject go, Vector3 pos, Vector3 normal) {
-        if(mDamage && !explodeOnDeath && CheckHitTag(go.tag)) {
+        if(mDamage && !explodeOnDeath && M8.Util.CheckTag(go, hitTags)) {
             if(mDamage.CallDamageTo(go, pos, normal)) {
                 if(damageExpireCount != -1) {
                     mCurDamageCount++;
-                    if(mCurDamageCount == damageExpireCount)
+                    if(mCurDamageCount >= damageExpireCount)
                         state = (int)State.Dying;
                 }
             }
@@ -563,6 +547,10 @@ public class Projectile : EntityBase {
     }*/
 
     void OnDecayEnd() {
+        mLastHit.col = collider;
+        mLastHit.normal = Vector3.down;
+        mLastHit.point = transform.position;
+
         state = (int)State.Dying;
     }
 
@@ -597,11 +585,8 @@ public class Projectile : EntityBase {
         Collider[] cols = Physics.OverlapSphere(pos, mSphereColl.radius, simpleLayerMask);
         for(int i = 0, max = cols.Length; i < max; i++) {
             Collider col = cols[i];
-            if(CheckHitTag(col.tag)) {
-                Vector3 dir = (col.bounds.center - pos).normalized;
-
-                ProcessContact(col.gameObject, pos, dir);
-            }
+            Vector3 dir = (col.bounds.center - pos).normalized;
+            ProcessContact(col.gameObject, pos, dir);
         }
     }
 
@@ -768,7 +753,7 @@ public class Projectile : EntityBase {
         Collider[] cols = Physics.OverlapSphere(pos, explodeRadius, explodeMask.value);
 
         foreach(Collider col in cols) {
-            if(col != null && col.rigidbody != null && CheckHitTag(col.gameObject.tag)) {
+            if(col != null && col.rigidbody != null && M8.Util.CheckTag(col, hitTags)) {
                 //hurt?
                 col.rigidbody.AddExplosionForce(explodeForce, pos, explodeRadius, explodeUpwardMod, ForceMode.Force);
 

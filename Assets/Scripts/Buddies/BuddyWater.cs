@@ -16,6 +16,10 @@ public class BuddyWater : Buddy {
     public Vector2 chargeForce;
     public float chargeMaxSpeed = 16.0f;
     public float chargeDrag = 0;
+    public GameObject chargeAttackGO;
+
+    public Grabber grabber;
+    public string grabberProjType; //for throwing
 
     private AnimatorData mBodyAnim;
 
@@ -38,6 +42,10 @@ public class BuddyWater : Buddy {
         mTakeBodyNormal = mBodyAnim.GetTakeIndex("normal");
 
         mTakeTentacleAttack = tentaclesAnim.GetTakeIndex("attack");
+
+        chargeAttackGO.SetActive(false);
+
+        grabber.grabCallback += OnGrabber;
     }
 
     protected override void OnEnter() {
@@ -62,6 +70,9 @@ public class BuddyWater : Buddy {
 
         if(mCharging)
             ApplyCharge(false);
+
+        if(grabber.grab)
+            Throw();
     }
 
     protected override IEnumerator OnExiting() {
@@ -88,7 +99,29 @@ public class BuddyWater : Buddy {
     }
 
     protected override void OnFire() {
-        StartCoroutine(mSubAction = DoCharge());
+        if(grabber.grab) {
+            Throw();
+
+            if(!ApplyActive())
+                StartCoroutine(mSubAction = DoActivate());
+        }
+        else
+            StartCoroutine(mSubAction = DoCharge());
+    }
+
+    void OnGrabber(Grabber g) {
+        if(mSubAction != null) {
+            StopCoroutine(mSubAction);
+            mSubAction = null;
+        }
+
+        tentaclesAnim.PlayDefault();
+
+        mLastFireTime = 0.0f;
+        ApplyCharge(false);
+        ApplyActive();
+
+        FireStop();
     }
 
     IEnumerator DoCharge() {
@@ -149,6 +182,8 @@ public class BuddyWater : Buddy {
             yield return wait;
 
         ApplyActive();
+
+        mSubAction = null;
     }
 
     /// <summary>
@@ -174,6 +209,8 @@ public class BuddyWater : Buddy {
 
         Player p = Player.instance;
 
+        chargeAttackGO.SetActive(yes);
+
         if(mCharging) {
             p.state = (int)EntityState.Charge;
         }
@@ -191,5 +228,18 @@ public class BuddyWater : Buddy {
                 }
             }
         }
+    }
+
+    void Throw() {
+        Grab grab = grabber.grab;
+        grabber.grab = null;
+                
+        Vector3 pos = grab.collider.bounds.center; pos.z = 0.0f;
+        Vector3 dir = fireDirWorld;
+                
+        GrabProjectile proj = Projectile.Create(projGrp, grabberProjType, pos, dir, null) as GrabProjectile;
+        proj.grab = grab;
+
+        grab.Throw(grabber, pos, dir);
     }
 }

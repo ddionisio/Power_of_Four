@@ -21,7 +21,7 @@ public class CameraController : MonoBehaviour {
     private static CameraController mInstance;
 
     private Camera2D mCam;
-    private Transform mAttach;
+    private CameraAttach mAttach;
     private Vector3 mCurVel;
     private Bounds mBounds;
     private bool mDoTrans;
@@ -37,7 +37,7 @@ public class CameraController : MonoBehaviour {
     /// </summary>
     public float delayScale { get { return mDelayScale; } set { mDelayScale = value; } }
 
-    public Transform attach {
+    public CameraAttach attach {
         get { return mAttach; }
         set {
             if(mAttach != value) {
@@ -89,7 +89,7 @@ public class CameraController : MonoBehaviour {
 
     Vector3 GetDest() {
         Vector3 curPos = transform.position;
-        Vector3 dest = mAttach ? mAttach.collider ? mAttach.collider.bounds.center : mAttach.position : curPos;
+        Vector3 dest = mAttach ? mAttach.position : curPos;
         dest.z = curPos.z;
 
         //apply bounds
