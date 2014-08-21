@@ -44,7 +44,9 @@ public class Grabber : MonoBehaviour {
 
                     grabbedT.rotation = attachT.rotation;
                     grabbedT.position = pos + grabbedT.localToWorldMatrix.MultiplyVector(ofs);
-                    
+
+                    mGrabbed.rigidbody.isKinematic = false; //just in case
+
                     mJoint = mGrabbed.gameObject.AddComponent<FixedJoint>();
                     mJoint.connectedBody = attachToBody;
                 }

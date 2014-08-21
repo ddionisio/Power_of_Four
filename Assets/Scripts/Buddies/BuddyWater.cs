@@ -21,6 +21,16 @@ public class BuddyWater : Buddy {
     public Grabber grabber;
     public string grabberProjType; //for throwing
 
+    public Transform grabbedContainer; //display purpose
+    public Vector3 grabbedContainerOfs = new Vector3(0, 0, -2);
+    public float grabbedScaleOfs = 0.1f;
+
+    public Transform reticle;
+    public float reticleScale = 1.15f;
+    public float reticleUpdateDelay = 0.1f;
+    public float reticleDistance = 5.5f;
+    public LayerMask reticleCheckMask;
+
     private AnimatorData mBodyAnim;
 
     private int mTakeBodyEnter;
@@ -31,6 +41,9 @@ public class BuddyWater : Buddy {
 
     private bool mCharging;
     private IEnumerator mSubAction;
+    private IEnumerator mReticleAction;
+
+    private Transform mGrabbedContainerParent;
 
     public override bool canFire { get { return activeGO.activeSelf && !mCharging; } }
 
@@ -46,6 +59,22 @@ public class BuddyWater : Buddy {
         chargeAttackGO.SetActive(false);
 
         grabber.grabCallback += OnGrabber;
+
+        mGrabbedContainerParent = grabbedContainer.parent;
+        grabbedContainer.gameObject.SetActive(false);
+
+        int retCount = reticle.childCount;
+        if(retCount > 0) {
+            float angleInc = 360.0f/retCount;
+            float angle = 0;
+            for(int i = 0; i < retCount; i++) {
+                Transform t = reticle.GetChild(i);
+                t.localRotation = Quaternion.Euler(0, 0, angle);
+                angle += angleInc;
+            }
+        }
+
+        reticle.gameObject.SetActive(false);
     }
 
     protected override void OnEnter() {
@@ -73,6 +102,13 @@ public class BuddyWater : Buddy {
 
         if(grabber.grab)
             Throw();
+
+        if(mReticleAction != null) {
+            StopCoroutine(mReticleAction);
+            mReticleAction = null;
+        }
+
+        reticle.gameObject.SetActive(false);
     }
 
     protected override IEnumerator OnExiting() {
@@ -120,6 +156,15 @@ public class BuddyWater : Buddy {
         mLastFireTime = 0.0f;
         ApplyCharge(false);
         ApplyActive();
+
+        Transform grabT = g.grab.transform;
+        Bounds grabB = g.grab.collider.bounds;
+        float grabbedContainerS = Mathf.Max(grabB.extents.x, grabB.extents.y) + grabbedScaleOfs;
+
+        grabbedContainer.gameObject.SetActive(true);
+        grabbedContainer.parent = grabT;
+        grabbedContainer.localPosition = grabT.worldToLocalMatrix.MultiplyPoint(grabB.center) + grabbedContainerOfs;
+        grabbedContainer.localScale = new Vector3(grabbedContainerS, grabbedContainerS, 1.0f);
 
         FireStop();
     }
@@ -186,6 +231,48 @@ public class BuddyWater : Buddy {
         mSubAction = null;
     }
 
+    IEnumerator DoReticle() {
+        WaitForSeconds wait = new WaitForSeconds(reticleUpdateDelay);
+
+        GameObject reticleGO = reticle.gameObject;
+
+        reticleGO.SetActive(true);
+
+        SphereCollider scoll = grabber.collider as SphereCollider;
+        float radius = scoll ? scoll.radius : 0.5f;
+
+        while(activeGO.activeSelf && !grabber.grab) {
+            Player p = Player.instance;
+
+            Vector3 pos = p.collider.bounds.center;
+            Vector3 dir = fireDirWorld;
+
+            RaycastHit hit;
+            Grab grab;
+            if(Physics.SphereCast(pos, radius, dir, out hit, reticleDistance, reticleCheckMask) && (grab = hit.collider.GetComponent<Grab>())) {
+                Transform t = hit.collider.transform;
+                if(reticle.parent != t) {
+                    Bounds hitB = hit.collider.bounds;
+                    reticleGO.SetActive(true);
+                    reticle.parent = t;
+                    reticle.localPosition = t.worldToLocalMatrix.MultiplyPoint(hitB.center);
+                    reticle.localScale = Vector3.one;
+                    UpdateReticle(Mathf.Max(hitB.extents.x, hitB.extents.y));
+                }
+            }
+            else if(reticleGO.activeSelf) {
+                reticle.parent = transform;
+                reticleGO.SetActive(false);
+            }
+
+            yield return wait;
+        }
+
+        reticleGO.SetActive(false);
+
+        mReticleAction = null;
+    }
+
     /// <summary>
     /// Returns true if activated
     /// </summary>
@@ -195,6 +282,9 @@ public class BuddyWater : Buddy {
             bodySpriteRender.sprite = bodyActiveSprite;
             activeGO.SetActive(true);
             OnDirChange();
+
+            if(!grabber.grab && mReticleAction == null)
+                StartCoroutine(mReticleAction = DoReticle());
         }
         else {
             bodySpriteRender.sprite = bodyInactiveSprite;
@@ -233,13 +323,26 @@ public class BuddyWater : Buddy {
     void Throw() {
         Grab grab = grabber.grab;
         grabber.grab = null;
-                
+
         Vector3 pos = grab.collider.bounds.center; pos.z = 0.0f;
         Vector3 dir = fireDirWorld;
-                
+
         GrabProjectile proj = Projectile.Create(projGrp, grabberProjType, pos, dir, null) as GrabProjectile;
         proj.grab = grab;
 
         grab.Throw(grabber, pos, dir);
+
+        grabbedContainer.parent = mGrabbedContainerParent;
+        grabbedContainer.gameObject.SetActive(false);
+    }
+
+    void UpdateReticle(float dist) {
+        int retCount = reticle.childCount;
+        for(int i = 0; i < retCount; i++) {
+            Transform t = reticle.GetChild(i);
+            Quaternion r = t.localRotation;
+            Vector3 newPos = (r*Vector3.right)*(dist*reticleScale);
+            t.localPosition = new Vector3(newPos.x, newPos.y, t.localPosition.z);
+        }
     }
 }
