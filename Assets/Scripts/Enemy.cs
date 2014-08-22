@@ -178,9 +178,13 @@ public class Enemy : EntityBase {
 
             case EntityState.Grabbed:
                 SetPhysicsActive(false, true);
-                if(mBody)
+                if(mBody) {
                     mBody.isKinematic = false;
-                mBody.drag = 0.0f;
+                    mBody.detectCollisions = true;
+                    mBody.drag = 0.0f;
+                }
+                if(collider)
+                    collider.enabled = true;
 
                 PlayAnim(takeGrabbed);
                 break;
@@ -252,13 +256,15 @@ public class Enemy : EntityBase {
     }
 
     public override void SpawnFinish() {
-        //start ai, player control, etc
-        if(mStats)
-            mStats.isInvul = false;
+        if(state == (int)EntityState.Invalid) {
+            //start ai, player control, etc
+            if(mStats)
+                mStats.isInvul = false;
 
-        SetPhysicsActive(true, false);
+            SetPhysicsActive(true, false);
 
-        state = (int)EntityState.Normal;
+            state = (int)EntityState.Normal;
+        }
     }
 
     protected override void SpawnStart() {
@@ -343,7 +349,7 @@ public class Enemy : EntityBase {
 
     protected void SetPhysicsActive(bool aActive, bool excludeCollision) {
         if(rigidbody) {
-            if(!mBodyKinematicDefault) {
+            if(!mBodyKinematicDefault || !aActive) {
                 rigidbody.isKinematic = !aActive;
             }
 

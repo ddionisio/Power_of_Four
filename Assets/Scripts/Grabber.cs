@@ -48,6 +48,7 @@ public class Grabber : MonoBehaviour {
                     mGrabbed.rigidbody.isKinematic = false; //just in case
 
                     mJoint = mGrabbed.gameObject.AddComponent<FixedJoint>();
+                    mJoint.enableCollision = false;
                     mJoint.connectedBody = attachToBody;
                 }
             }
@@ -57,9 +58,9 @@ public class Grabber : MonoBehaviour {
     void OnTriggerEnter(Collider col) {
         Grab newGrab = col.GetComponent<Grab>();
         if(newGrab && newGrab.isGrabbable) {
-            newGrab.Grabbed(this);
-
             grab = newGrab;
+
+            newGrab.Grabbed(this);
 
             if(grabCallback != null)
                 grabCallback(this);

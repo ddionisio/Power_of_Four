@@ -179,6 +179,8 @@ public abstract class Buddy : MonoBehaviour {
     }
 
     void OnDestroy() {
+        OnDeinit();
+
         activateCallback = null;
         deactivateCallback = null;
         levelChangeCallback = null;
@@ -236,6 +238,8 @@ public abstract class Buddy : MonoBehaviour {
     /// Called once for initialization
     /// </summary>
     protected virtual void OnInit() { }
+
+    protected virtual void OnDeinit() { }
 
     /// <summary>
     /// Called once we enter during activate

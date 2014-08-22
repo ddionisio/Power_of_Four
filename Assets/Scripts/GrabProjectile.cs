@@ -16,6 +16,9 @@ public class GrabProjectile : Projectile {
         set {
             mContained = value;
 
+            bool containedCollEnabled = mContained.collider.enabled;
+            mContained.collider.enabled = true;
+
             Bounds containedBounds = mContained.collider.bounds;
             Transform containedT = mContained.transform;
 
@@ -40,6 +43,8 @@ public class GrabProjectile : Projectile {
             if(scoll) {
                 scoll.radius = Mathf.Max(containedBounds.extents.x, containedBounds.extents.y);
             }
+
+            mContained.collider.enabled = containedCollEnabled;
             //TODO: other shapes
         }
     }

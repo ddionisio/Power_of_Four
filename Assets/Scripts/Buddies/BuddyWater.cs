@@ -2,6 +2,8 @@
 using System.Collections;
 
 public class BuddyWater : Buddy {
+    public const string grabHolderName = "waterGrabbed";
+
     public SpriteRenderer bodySpriteRender;
     public Sprite bodyActiveSprite;
     public Sprite bodyInactiveSprite;
@@ -75,6 +77,14 @@ public class BuddyWater : Buddy {
         }
 
         reticle.gameObject.SetActive(false);
+
+        UserData.instance.actCallback += OnUserDataAction;
+        SceneManager.instance.sceneChangeCallback += OnSceneChange;
+    }
+
+    protected override void OnDeinit() {
+        if(UserData.instance) UserData.instance.actCallback -= OnUserDataAction;
+        if(SceneManager.instance) SceneManager.instance.sceneChangeCallback -= OnSceneChange;
     }
 
     protected override void OnEnter() {
@@ -89,6 +99,18 @@ public class BuddyWater : Buddy {
             yield return wait;
 
         mBodyAnim.Play(mTakeBodyNormal);
+
+        //check if we previously had a holder
+        Transform holder = SceneManager.instance.StoreGetObject(grabHolderName);
+        if(holder) { //duplicate
+            GameObject go = Instantiate(holder.gameObject) as GameObject;
+            go.transform.parent = null;
+            go.SetActive(true);
+            Grab g = go.GetComponent<Grab>();
+            grabber.grab = g;
+            g.Grabbed(grabber);
+            OnGrabber(grabber);
+        }
     }
 
     protected override void OnExit() {
@@ -167,6 +189,48 @@ public class BuddyWater : Buddy {
         grabbedContainer.localScale = new Vector3(grabbedContainerS, grabbedContainerS, 1.0f);
 
         FireStop();
+    }
+
+    void OnUserDataAction(UserData ud, UserData.Action act) {
+        if(act == UserData.Action.Save) {
+            SceneManager smgr = SceneManager.instance;
+            smgr.StoreDestroyObject(grabHolderName);
+            if(grabber.grab) { //duplicate
+                GameObject store = Instantiate(grabber.grab.gameObject) as GameObject;
+                FixedJoint joint = store.GetComponent<FixedJoint>();
+                if(joint) Destroy(joint);
+                store.name = grabHolderName;
+                EntityBase ent = store.GetComponent<EntityBase>();
+                if(ent) {
+                    ent.state = (int)EntityState.Invalid;
+                    if(ent.activator) { Destroy(ent.activator); ent.activator = null; }
+                    ent.activateOnStart = true;
+                }
+                Transform container = store.transform.Find(grabbedContainer.name);
+                if(container) Destroy(container.gameObject);
+                smgr.StoreAddObject(store.transform);
+            }
+        }
+    }
+
+    void OnSceneChange(string nextScene) {
+        if(Application.loadedLevelName != nextScene) {
+            SceneManager smgr = SceneManager.instance;
+            smgr.StoreDestroyObject(grabHolderName);
+            if(grabber.grab) {
+                grabbedContainer.parent = mGrabbedContainerParent;
+                FixedJoint joint = grabber.grab.GetComponent<FixedJoint>();
+                if(joint) Destroy(joint);
+                EntityBase ent = grabber.grab.GetComponent<EntityBase>();
+                if(ent) {
+                    ent.state = (int)EntityState.Invalid;
+                    if(ent.activator) { Destroy(ent.activator); ent.activator = null; }
+                    ent.activateOnStart = true;
+                }
+                grabber.grab.name = grabHolderName;
+                smgr.StoreAddObject(grabber.grab.transform);
+            }
+        }
     }
 
     IEnumerator DoCharge() {
@@ -249,7 +313,7 @@ public class BuddyWater : Buddy {
 
             RaycastHit hit;
             Grab grab;
-            if(Physics.SphereCast(pos, radius, dir, out hit, reticleDistance, reticleCheckMask) && (grab = hit.collider.GetComponent<Grab>())) {
+            if(Physics.SphereCast(pos, radius, dir, out hit, reticleDistance, reticleCheckMask) && (grab = hit.collider.GetComponent<Grab>()) && grab.isGrabbable) {
                 Transform t = hit.collider.transform;
                 if(reticle.parent != t) {
                     Bounds hitB = hit.collider.bounds;
