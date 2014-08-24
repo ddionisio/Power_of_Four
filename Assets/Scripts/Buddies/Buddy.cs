@@ -163,9 +163,7 @@ public abstract class Buddy : MonoBehaviour {
 
         //load level from save
         mLevel = PlayerSave.BuddyGetLevel(mInd);
-
-        player.lookDirChangedCallback += OnPlayerChangeDir;
-
+                
         OnInit();
     }
 
@@ -214,11 +212,15 @@ public abstract class Buddy : MonoBehaviour {
         OnEnter();
 
         yield return StartCoroutine(mCurAct = OnEntering());
-
+                
         mCurAct = null;
+
+        Player.instance.lookDirChangedCallback += OnPlayerChangeDir;
     }
 
     IEnumerator DoExit() {
+        Player.instance.lookDirChangedCallback -= OnPlayerChangeDir;
+
         if(deactivateCallback != null)
             deactivateCallback(this);
 

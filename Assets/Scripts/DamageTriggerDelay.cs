@@ -18,9 +18,12 @@ public class DamageTriggerDelay : DamageTrigger {
 
     void OnTriggerStay(Collider col) {
         if(!mActives.ContainsKey(col)) {
-            IEnumerator route;
-            StartCoroutine(route = DamageRoutine(col));
-            mActives.Add(col, route);
+            Stats stat = col.GetComponent<Stats>();
+            if(stat) {
+                IEnumerator route;
+                StartCoroutine(route = DamageRoutine(col, stat));
+                mActives.Add(col, route);
+            }
         }
     }
 
@@ -28,10 +31,10 @@ public class DamageTriggerDelay : DamageTrigger {
         mActives.Clear();
     }
 
-    IEnumerator DamageRoutine(Collider col) {
+    IEnumerator DamageRoutine(Collider col, Stats stat) {
         WaitForSeconds wait = new WaitForSeconds(delay);
         while(col && col.gameObject.activeInHierarchy) {
-            DoDamage(col);
+            DoDamage(stat, col.bounds.center);
             yield return wait;
         }
 

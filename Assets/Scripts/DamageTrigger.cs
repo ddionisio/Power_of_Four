@@ -18,6 +18,14 @@ public class DamageTrigger : MonoBehaviour {
         }
     }
 
+    protected void DoDamage(Stats stats, Vector3 center) {
+        if(mDmg.CallDamageTo(stats, transform.position, (center - transform.position).normalized)) {
+            if(damageCallback != null) {
+                damageCallback(this, stats.gameObject);
+            }
+        }
+    }
+
     void OnDestroy() {
         damageCallback = null;
     }

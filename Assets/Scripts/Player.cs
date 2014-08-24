@@ -512,6 +512,7 @@ public class Player : EntityBase {
 
         for(int i = 0; i < buddies.Length; i++) {
             buddies[i].Init(this, i);
+            buddies[i].gameObject.SetActive(false);
         }
     }
 

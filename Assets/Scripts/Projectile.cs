@@ -41,7 +41,7 @@ public class Projectile : EntityBase {
     public float startVelocityAddRand;
     public float force;
     [SerializeField]
-    float speedLimit;
+    protected float speedLimit;
     public bool seekUseForce = false;
     public float seekAngleLimit = 360.0f; //angle limit from startDir
     public float seekForceDelay = 0.15f;
@@ -88,6 +88,7 @@ public class Projectile : EntityBase {
     protected Vector3 mInitDir = Vector3.zero;
     protected Transform mSeek = null;
     protected Vector3 mCurVelocity; //only use by simple
+    protected float mInitialVelocity;
 
     private Damage mDamage;
     private float mDefaultSpeedLimit;
@@ -227,46 +228,43 @@ public class Projectile : EntityBase {
         mCurBounce = 0;
         mCurDamageCount = 0;
 
-        if(decayEnabled && decayDelay == 0) {
-            OnDecayEnd();
+        //starting direction and force
+        if(simple) {
+            mCurVelocity = mInitDir * startVelocity;
         }
         else {
-            //starting direction and force
-            if(simple) {
-                mCurVelocity = mInitDir * startVelocity;
-            }
-            else {
-                if(rigidbody != null && mInitDir != Vector3.zero) {
-                    //set velocity
-                    if(!rigidbody.isKinematic) {
-                        if(startVelocityAddRand != 0.0f) {
-                            rigidbody.velocity = mInitDir * (startVelocity + Random.value * startVelocityAddRand);
-                        }
-                        else {
-                            rigidbody.velocity = mInitDir * startVelocity;
-                        }
+            if(rigidbody != null && mInitDir != Vector3.zero) {
+                //set velocity
+                if(!rigidbody.isKinematic) {
+                    if(startVelocityAddRand != 0.0f) {
+                        mInitialVelocity = startVelocity + Random.value * startVelocityAddRand;
+                    }
+                    else {
+                        mInitialVelocity = startVelocity;
                     }
 
-                    mActiveForce = mInitDir * force;
+                    rigidbody.velocity = mInitDir * mInitialVelocity;
                 }
-            }
 
-            if(decayEnabled)
-                Invoke("OnDecayEnd", decayDelay);
+                mActiveForce = mInitDir * force;
+            }
+        }
 
-            if(seekStartDelay > 0.0f) {
-                state = (int)State.Active;
+        if(decayEnabled)
+            Invoke("OnDecayEnd", decayDelay);
 
-                Invoke("OnSeekStart", seekStartDelay);
-            }
-            else {
-                OnSeekStart();
-            }
-                        
-            if(applyDirToUp) {
-                applyDirToUp.up = mInitDir;
-                InvokeRepeating("OnUpUpdate", 0.1f, 0.1f);
-            }
+        if(seekStartDelay > 0.0f) {
+            state = (int)State.Active;
+
+            Invoke("OnSeekStart", seekStartDelay);
+        }
+        else {
+            OnSeekStart();
+        }
+
+        if(applyDirToUp) {
+            applyDirToUp.up = mInitDir;
+            InvokeRepeating("OnUpUpdate", 0.1f, 0.1f);
         }
     }
 
@@ -321,14 +319,14 @@ public class Projectile : EntityBase {
             case State.Invalid:
                 CancelInvoke();
                 RevertSpeedLimit();
-                
+
                 PhysicsDisable();
-                
+
                 if(mStats) {
                     mStats.Reset();
                     mStats.isInvul = true;
                 }
-                
+
                 mSpawning = false;
                 break;
         }
@@ -394,7 +392,7 @@ public class Projectile : EntityBase {
                 else if(rigidbody != null)
                     rigidbody.velocity = Vector3.zero;
                 break;
-                            
+
             case ContactType.Bounce:
                 if(maxBounce > 0 && mCurBounce == maxBounce)
                     state = (int)State.Dying;
@@ -581,12 +579,14 @@ public class Projectile : EntityBase {
     }
 
     protected void SimpleCheckContain() {
-        Vector3 pos = mSphereColl.bounds.center;
-        Collider[] cols = Physics.OverlapSphere(pos, mSphereColl.radius, simpleLayerMask);
-        for(int i = 0, max = cols.Length; i < max; i++) {
-            Collider col = cols[i];
-            Vector3 dir = (col.bounds.center - pos).normalized;
-            ProcessContact(col.gameObject, pos, dir);
+        if(mSphereColl) {
+            Vector3 pos = mSphereColl.bounds.center;
+            Collider[] cols = Physics.OverlapSphere(pos, mSphereColl.radius, simpleLayerMask);
+            for(int i = 0, max = cols.Length; i < max; i++) {
+                Collider col = cols[i];
+                Vector3 dir = (col.bounds.center - pos).normalized;
+                ProcessContact(col.gameObject, pos, dir);
+            }
         }
     }
 
@@ -594,12 +594,22 @@ public class Projectile : EntityBase {
         float d = delta.magnitude;
 
         if(d > 0.0f) {
-            Vector3 pos = mSphereColl.bounds.center;
             Vector3 dir = new Vector3(delta.x / d, delta.y / d, delta.z / d);
+            DoSimpleMove(dir, d);
+        }
+
+        //make sure we are still active
+        if(isAlive)
+            transform.position = transform.position + delta;
+    }
+
+    protected void DoSimpleMove(Vector3 dir, float distance) {
+        if(mSphereColl) {
+            Vector3 pos = mSphereColl.bounds.center;
 
             //check if hit something
             RaycastHit hit;
-            if(Physics.SphereCast(pos, mSphereColl.radius, dir, out hit, d, simpleLayerMask)) {
+            if(Physics.SphereCast(pos, mSphereColl.radius, dir, out hit, distance, simpleLayerMask)) {
                 mLastHit.col = hit.collider;
                 mLastHit.normal = hit.normal;
                 mLastHit.point = hit.point;
@@ -608,15 +618,10 @@ public class Projectile : EntityBase {
 
                 ProcessContact(hit.collider.gameObject, hit.point, hit.normal);
             }
-            else {
-                //try contain
-                SimpleCheckContain();
-            }
         }
-
-        //make sure we are still active
-        if(isAlive)
-            transform.position = transform.position + delta;
+        else {
+            transform.position = transform.position + dir*distance;
+        }
     }
 
     void DoSimple() {
@@ -657,7 +662,7 @@ public class Projectile : EntityBase {
                     Vector3 dest = mSeek.position;
                     Vector3 _dir = dest - pos; _dir.z = 0.0f;
                     float dist = _dir.magnitude;
-                    
+
                     if(dist > 0.0f) {
                         _dir /= dist;
 
