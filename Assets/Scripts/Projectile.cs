@@ -618,6 +618,8 @@ public class Projectile : EntityBase {
 
                 ProcessContact(hit.collider.gameObject, hit.point, hit.normal);
             }
+            else
+                transform.position = transform.position + dir*distance;
         }
         else {
             transform.position = transform.position + dir*distance;

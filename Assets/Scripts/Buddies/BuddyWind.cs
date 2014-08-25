@@ -81,6 +81,18 @@ public class BuddyWind : Buddy {
         ProjectileWave proj = Projectile.Create(projGrp, projType, firePos, fireDirWorld, null) as ProjectileWave;
         proj.angleInitialDir = mCurProjAngleDir;
         mCurProjAngleDir *= -1.0f;
+
+        //check level then enable conductor
+        ElectrifyConductor ec = proj.GetComponent<ElectrifyConductor>();
+        ec.Run();
+
+        /*proj = Projectile.Create(projGrp, projType, firePos, fireDirWorld, null) as ProjectileWave;
+        proj.angleInitialDir = mCurProjAngleDir;
+        mCurProjAngleDir *= -1.0f;
+
+        //check level then enable conductor
+        ec = proj.GetComponent<ElectrifyConductor>();
+        ec.Run();*/
     }
 
     protected override void OnFireStop() {
