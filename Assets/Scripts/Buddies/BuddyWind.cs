@@ -76,23 +76,25 @@ public class BuddyWind : Buddy {
         if(mFireReadyAction != null) { StopCoroutine(mFireReadyAction); mFireReadyAction = null; }
     }
 
-    protected override void OnFire() {
-        //fire stuff
+    void DoFire(bool applyElectricity) {
         ProjectileWave proj = Projectile.Create(projGrp, projType, firePos, fireDirWorld, null) as ProjectileWave;
         proj.angleInitialDir = mCurProjAngleDir;
         mCurProjAngleDir *= -1.0f;
 
-        //check level then enable conductor
-        ElectrifyConductor ec = proj.GetComponent<ElectrifyConductor>();
-        ec.Run();
+        if(applyElectricity) {
+            ElectrifyConductor ec = proj.GetComponent<ElectrifyConductor>();
+            ec.Run();
+        }
+    }
 
-        /*proj = Projectile.Create(projGrp, projType, firePos, fireDirWorld, null) as ProjectileWave;
-        proj.angleInitialDir = mCurProjAngleDir;
-        mCurProjAngleDir *= -1.0f;
+    protected override void OnFire() {
+        bool applyElectricity = level > 2;
 
-        //check level then enable conductor
-        ec = proj.GetComponent<ElectrifyConductor>();
-        ec.Run();*/
+        //fire stuff
+        DoFire(applyElectricity);
+
+        if(level > 1)
+            DoFire(applyElectricity);
     }
 
     protected override void OnFireStop() {
