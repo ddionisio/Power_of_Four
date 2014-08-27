@@ -15,7 +15,7 @@ public abstract class Buddy : MonoBehaviour {
     public float fireRate;
 
     [SerializeField]
-    Transform projPoint;
+    protected Transform projPoint;
 
     public LevelInfo[] levelInfos;
 

@@ -29,7 +29,6 @@ public class BuddyFlame : Buddy {
     public Sprite bodySpriteNormal;
     public Sprite bodySpriteFire;
 
-    public SpriteRenderer eye;
     public Sprite eyeSpriteNormal;
     public Sprite eyeSpriteFire;
 
@@ -40,6 +39,8 @@ public class BuddyFlame : Buddy {
     public SpriteColorPulse[] fingerPulses;
     public float fingerPulseNormal = 0.2f;
     public float fingerPulseFire = 1.0f;
+    public Color fingerColorNormal = Color.gray;
+    public Color fingerColorFire = Color.white;
 
     public AnimatorData fingerAnim;
     public string fingerTakeIdle;
@@ -47,7 +48,15 @@ public class BuddyFlame : Buddy {
     public string fingerTakeUp;
     public string fingerTakeDown;
 
+    public float chargeDelay = 1.0f;
+    public ParticleSystem chargeParticle;
+    public GameObject chargeActiveGO;
+    
     public ProjData[] projs; //based on level
+
+    public string chargeProjType;
+
+    private SpriteRenderer mEyeSpriteRenderer;
 
     private AnimatorData mAnim;
     private int mTakeEnter;
@@ -60,6 +69,9 @@ public class BuddyFlame : Buddy {
 
     private IEnumerator mFingerAnimAction;
 
+    private IEnumerator mChargeAction;
+    private bool mChargeIsActive;
+
     protected override void OnInit() {
         mFingerTakeIdle = fingerAnim.GetTakeIndex(fingerTakeIdle);
         mFingerTakeMove = fingerAnim.GetTakeIndex(fingerTakeMove);
@@ -69,6 +81,10 @@ public class BuddyFlame : Buddy {
         mAnim = GetComponent<AnimatorData>();
         mTakeEnter = mAnim.GetTakeIndex("enter");
         mTakeExit = mAnim.GetTakeIndex("exit");
+
+        mEyeSpriteRenderer = projPoint.GetComponent<SpriteRenderer>();
+
+        chargeActiveGO.SetActive(false);
     }
 
     protected override void OnEnter() {
@@ -83,10 +99,15 @@ public class BuddyFlame : Buddy {
         mAnim.Play(mTakeEnter);
         while(mAnim.isPlaying)
             yield return wait;
+
+        if(level > 2)
+            ChargeActive(true);
     }
 
     protected override void OnExit() {
         if(mFingerAnimAction != null) { StopCoroutine(mFingerAnimAction); mFingerAnimAction = null; }
+
+        ChargeActive(false);
     }
 
     protected override IEnumerator OnExiting() {
@@ -98,14 +119,30 @@ public class BuddyFlame : Buddy {
 
     protected override void OnFireStart() {
         SetFiring(true);
+
+        if(mChargeAction != null) { StopCoroutine(mChargeAction); mChargeAction = null; }
+
+        chargeParticle.loop = false;
+        chargeParticle.Stop();
+        chargeParticle.Clear();
     }
 
     protected override void OnFire() {
-        //projs[level - 1].Fire(firePos, fireDirWorld);
+        if(mChargeIsActive) {
+            //fire
+            Projectile.Create(projGrp, chargeProjType, firePos, fireDirWorld, null);
+
+            ChargeActive(false);
+        }
+        else {
+            int projInd = level < 3 ? level - 1 : projs.Length - 1;
+            projs[projInd].Fire(firePos, fireDirWorld);
+        }
     }
 
     protected override void OnFireStop() {
         SetFiring(false);
+        ChargeActive(true);
     }
 
     IEnumerator DoFingerAnim() {
@@ -127,37 +164,65 @@ public class BuddyFlame : Buddy {
         }
     }
 
+    IEnumerator DoCharge() {
+        chargeParticle.loop = true;
+        chargeParticle.Play();
+        
+        yield return new WaitForSeconds(chargeDelay);
+
+        mChargeIsActive = true;
+        chargeParticle.loop = false;
+        chargeActiveGO.SetActive(true);
+    }
+
     protected override void OnDirChange() {
-        Transform eyeT = eye.transform;
         Vector3 pos;
         switch(dir) {
             case Player.LookDir.Front:
-                pos = new Vector3(eyeFront.x, eyeFront.y, eyeT.localPosition.z);
+                pos = new Vector3(eyeFront.x, eyeFront.y, projPoint.localPosition.z);
                 break;
             case Player.LookDir.Down:
-                pos = new Vector3(eyeDown.x, eyeDown.y, eyeT.localPosition.z);
+                pos = new Vector3(eyeDown.x, eyeDown.y, projPoint.localPosition.z);
                 break;
             default:
-                pos = new Vector3(eyeUp.x, eyeUp.y, eyeT.localPosition.z);
+                pos = new Vector3(eyeUp.x, eyeUp.y, projPoint.localPosition.z);
                 break;
         }
-        eyeT.localPosition = pos;
+        projPoint.localPosition = pos;
+    }
+
+    void ChargeActive(bool active) {
+        mChargeIsActive = false;
+        chargeParticle.loop = false;
+        chargeParticle.Stop();
+        chargeActiveGO.SetActive(false);
+
+        if(active) {
+            StartCoroutine(mChargeAction = DoCharge());
+        }
+        else {
+            if(mChargeAction != null) { StopCoroutine(mChargeAction); mChargeAction = null; }
+        }
     }
 
     void SetFiring(bool firing) {
         if(firing) {
             body.sprite = bodySpriteFire;
-            eye.sprite = eyeSpriteFire;
+            mEyeSpriteRenderer.sprite = eyeSpriteFire;
 
-            for(int i = 0; i < fingerPulses.Length; i++)
+            for(int i = 0; i < fingerPulses.Length; i++) {
+                fingerPulses[i].startColor = fingerColorFire;
                 fingerPulses[i].pulsePerSecond = fingerPulseFire;
+            }
         }
         else {
             body.sprite = bodySpriteNormal;
-            eye.sprite = eyeSpriteNormal;
+            mEyeSpriteRenderer.sprite = eyeSpriteNormal;
 
-            for(int i = 0; i < fingerPulses.Length; i++)
+            for(int i = 0; i < fingerPulses.Length; i++) {
+                fingerPulses[i].startColor = fingerColorNormal;
                 fingerPulses[i].pulsePerSecond = fingerPulseNormal;
+            }
         }
     }
 }

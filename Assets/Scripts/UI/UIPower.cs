@@ -53,7 +53,7 @@ public class UIPower : MonoBehaviour {
     }
 
     void OnBuddyLevelChange(Buddy bud) {
-        icon.spriteName = bud.levelInfos[bud.level-1].iconSpriteRef;
+        icon.spriteName = bud.levelInfos[Mathf.Clamp(bud.level-1, 0, bud.levelInfos.Length-1)].iconSpriteRef;
     }
 
     IEnumerator DoAnim(string takeAction, string takeEnd) {

@@ -597,10 +597,8 @@ public class Projectile : EntityBase {
             Vector3 dir = new Vector3(delta.x / d, delta.y / d, delta.z / d);
             DoSimpleMove(dir, d);
         }
-
-        //make sure we are still active
-        if(isAlive)
-            transform.position = transform.position + delta;
+        else
+            SimpleCheckContain();
     }
 
     protected void DoSimpleMove(Vector3 dir, float distance) {
@@ -618,12 +616,15 @@ public class Projectile : EntityBase {
 
                 ProcessContact(hit.collider.gameObject, hit.point, hit.normal);
             }
-            else
-                transform.position = transform.position + dir*distance;
+            else {
+                //transform.position = transform.position + dir*distance;
+                SimpleCheckContain();
+            }
         }
-        else {
+
+        //make sure we are still active
+        if(isAlive)
             transform.position = transform.position + dir*distance;
-        }
     }
 
     void DoSimple() {
