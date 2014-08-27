@@ -142,7 +142,9 @@ public class BuddyFlame : Buddy {
 
     protected override void OnFireStop() {
         SetFiring(false);
-        ChargeActive(true);
+
+        if(level > 2)
+            ChargeActive(true);
     }
 
     IEnumerator DoFingerAnim() {
