@@ -39,7 +39,7 @@ public struct PlayerSave {
         int dat = mBuddyLevelsDat >> (ind*3);
         
         //CHEAT
-        return 3;
+        return 1;
 
         //return dat & 7;
     }
