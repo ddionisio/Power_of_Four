@@ -2,21 +2,9 @@
 using System.Collections;
 
 public class BuddyRock : Buddy {
-    [System.Serializable]
-    public class ProjData {
-        public string type;
-        public float angleRange;
-
-        public Projectile Fire(Vector3 pos, Vector3 dir) {
-            dir = Quaternion.Euler(0, 0, Random.Range(-angleRange, angleRange))*dir;
-
-            Projectile proj = Projectile.Create(projGrp, type, pos, dir, null);
-
-            return proj;
-        }
-    }
-
-    public ProjData[] projs; //based on level
+    public string projType;
+    public string projExplodeSuperType;
+    public float projAngleRange;
 
     public override bool canFire { get { return mDoActiveAction == null; } }
 
@@ -55,8 +43,17 @@ public class BuddyRock : Buddy {
     }
 
     protected override void OnFire() {
-        //int projInd = Mathf.Clamp(level - 1, 0, projs.Length - 1);
-        //projs[projInd].Fire(firePos, fireDirWorld);
+        Vector3 dir = Quaternion.Euler(0, 0, Random.Range(-projAngleRange, projAngleRange))*fireDirWorld;
+        Projectile proj = Projectile.Create(projGrp, projType, firePos, dir, null);
+
+        if(level > 1) {
+            ProjectileSpawnOnDeath projDeath = proj.GetComponent<ProjectileSpawnOnDeath>();
+
+            projDeath.alive = true;
+
+            if(level > 2)
+                projDeath.type = projExplodeSuperType;
+        }
 
         if(mDoActiveAction != null)
             StopCoroutine(mDoActiveAction);

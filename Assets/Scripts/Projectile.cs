@@ -58,6 +58,7 @@ public class Projectile : EntityBase {
     public bool releaseOnSleep;
     public LayerMask explodeMask;
     public float explodeForce;
+    public ForceMode explodeForceMode;
     public float explodeUpwardMod;
     public Vector3 explodeOfs;
     public Transform explodeOfsTarget;
@@ -763,7 +764,7 @@ public class Projectile : EntityBase {
         foreach(Collider col in cols) {
             if(col != null && col.rigidbody != null && M8.Util.CheckTag(col, hitTags)) {
                 //hurt?
-                col.rigidbody.AddExplosionForce(explodeForce, pos, explodeRadius, explodeUpwardMod, ForceMode.Force);
+                col.rigidbody.AddExplosionForce(explodeForce, pos, explodeRadius, explodeUpwardMod, explodeForceMode);
 
                 //float distSqr = (col.transform.position - pos).sqrMagnitude;
 
