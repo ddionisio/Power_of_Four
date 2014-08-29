@@ -2,6 +2,7 @@
 using System.Collections;
 
 public class TriggerAttacher : MonoBehaviour {
+    public GameObject targetBody;
     public TriggerSeeker seeker; //call to turn off once we are attached, on again when detached
     public float reactiveDelay;
 
@@ -35,21 +36,20 @@ public class TriggerAttacher : MonoBehaviour {
     }
 
     void Awake() {
-        mGrav = GetComponent<GravityController>();
+        mGrav = targetBody.GetComponent<GravityController>();
     }
 
     void OnTriggerEnter(Collider col) {
         if(mAlive && mJoint == null) {
-            seeker.alive = false;
-
-            mJoint = col.gameObject.AddComponent<FixedJoint>();
-            mJoint.connectedBody = rigidbody;
-
             col.transform.position = collider.bounds.center;
 
-            col.SendMessage("OnTriggerAttacherAttach", this);
+            mJoint = col.gameObject.AddComponent<FixedJoint>();
+            mJoint.connectedBody = targetBody.rigidbody;
 
+            seeker.alive = false;
             if(mGrav) mGrav.enabled = false;
+                        
+            col.SendMessage("OnTriggerAttacherAttach", this);
         }
     }
 
