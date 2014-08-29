@@ -58,7 +58,7 @@ public class GrabProjectile : Projectile {
                 mContained = null;
 
                 //release impacts
-                if(mSurroundItems.Length > 0) {
+                if(mSurroundItems.Length > 0 && !string.IsNullOrEmpty(impactProjGrp) && !string.IsNullOrEmpty(impactProjType)) {
                     Vector3 pos = transform.position; pos.z = 0.0f;
 
                     for(int i = 0; i < mSurroundItems.Length; i++) {

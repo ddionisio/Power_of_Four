@@ -45,6 +45,8 @@ public class Player : EntityBase {
 
     public LayerMask triggerSpecialMask;
 
+    public float attacherDetachImpulse;
+
     public event BuddyCallback buddyUnlockCallback;
     public event Callback buddyChangedCallback;
     public event Callback lookDirChangedCallback;
@@ -75,6 +77,7 @@ public class Player : EntityBase {
     private int mCurActionIconInd = -1;
     private bool mUpIsPressed = false;
     private bool mSpawned;
+    private TriggerAttacher mAttacher;
 
     public static Player instance { get { return mInstance; } }
 
@@ -298,6 +301,9 @@ public class Player : EntityBase {
                 }
                 //
 
+                //detach
+                AttacherDetach();
+
                 //spawn death thing
 
                 StartCoroutine(DoDeathFinishDelay());
@@ -373,6 +379,7 @@ public class Player : EntityBase {
                 break;
 
             case EntityState.Invalid:
+                AttacherDetach();
                 mSpawned = false;
                 inputEnabled = false;
                 mUpIsPressed = false;
@@ -411,6 +418,7 @@ public class Player : EntityBase {
 
     protected override void OnDespawned() {
         //reset stuff here
+        state = (int)EntityState.Invalid;
 
         base.OnDespawned();
     }
@@ -688,7 +696,11 @@ public class Player : EntityBase {
         if(dat.state == InputManager.State.Pressed) {
             InputManager input = InputManager.instance;
 
-            if(!mSliding) {
+            if(mAttacher) {
+                AttacherDetach();
+                rigidbody.AddForce(rigidbody.velocity.normalized*attacherDetachImpulse, ForceMode.Impulse);
+            }
+            else if(!mSliding) {
                 if(input.GetAxis(0, InputAction.MoveY) <= -inputDirThreshold && mCtrl.isGrounded) {
                     //Weapon curWpn = weapons[mCurWeaponInd];
                     //if(!curWpn.isFireActive || curWpn.allowSlide)
@@ -920,6 +932,13 @@ public class Player : EntityBase {
         return (triggerSpecialMask & (1<<comp.gameObject.layer)) != 0;
     }
 
+    void AttacherDetach() {
+        if(mAttacher) {
+            mAttacher.Detach();
+            mAttacher = null;
+        }
+    }
+
     void OnSceneChange(string nextScene) {
         //save stuff
 
@@ -952,5 +971,9 @@ public class Player : EntityBase {
         else {
             SetActionIcon(-1);
         }
+    }
+
+    void OnTriggerAttacherAttach(TriggerAttacher attacher) {
+        mAttacher = attacher;
     }
 }
