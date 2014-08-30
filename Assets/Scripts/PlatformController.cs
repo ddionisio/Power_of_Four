@@ -170,7 +170,8 @@ public class PlatformController : MonoBehaviour {
             }
 
             //look for platformers no longer in the list
-            foreach(PlatformerController ctrl in mPlatformers) {
+            for(int i = 0; i < mPlatformers.Count; i++ ) {
+                PlatformerController ctrl = mPlatformers[i];
                 int ind = mPlatformerSweep.IndexOf(ctrl);
                 if(ind == -1)
                     ctrl._PlatformSweep(false, gameObject.layer);
@@ -181,5 +182,14 @@ public class PlatformController : MonoBehaviour {
             mPlatformerSweep = l;
             mPlatformerSweep.Clear();
         }
+        else {
+            for(int i = 0; i < mPlatformers.Count; i++)
+                mPlatformers[i]._PlatformSweep(false, gameObject.layer);
+            for(int i = 0; i < mPlatformerSweep.Count; i++)
+                mPlatformerSweep[i]._PlatformSweep(false, gameObject.layer);
+            mPlatformers.Clear();
+            mPlatformerSweep.Clear();
+        }
     }
 }
+

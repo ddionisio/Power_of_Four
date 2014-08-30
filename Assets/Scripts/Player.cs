@@ -47,6 +47,8 @@ public class Player : EntityBase {
 
     public float attacherDetachImpulse;
 
+    public float groundSetPosDelay = 1.0f;
+
     public event BuddyCallback buddyUnlockCallback;
     public event Callback buddyChangedCallback;
     public event Callback lookDirChangedCallback;
@@ -78,6 +80,9 @@ public class Player : EntityBase {
     private bool mUpIsPressed = false;
     private bool mSpawned;
     private TriggerAttacher mAttacher;
+
+    private IEnumerator mGroundSetPosAction;
+    private Vector3 mGroundLastValidPos;
 
     public static Player instance { get { return mInstance; } }
 
@@ -214,6 +219,10 @@ public class Player : EntityBase {
 
         //select new buddy
         currentBuddyIndex = budInd;
+    }
+
+    public void WarpToLastGroundPosition() {
+        transform.position = mGroundLastValidPos;
     }
 
     protected override void StateChanged() {
@@ -466,6 +475,8 @@ public class Player : EntityBase {
             buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, 0);
         }
         currentBuddyIndex = buddyIndex;
+
+        if(mGroundSetPosAction == null && mCtrl.isGrounded) { StartCoroutine(mGroundSetPosAction = DoGroundSetPos()); }
     }
 
     protected override void SpawnStart() {
@@ -494,6 +505,7 @@ public class Player : EntityBase {
         mCtrl.moveInputY = InputAction.MoveY;
         mCtrl.collisionEnterCallback += OnRigidbodyCollisionEnter;
         mCtrl.landCallback += OnLand;
+        mCtrl.jumpCallback += OnJump;
 
         mDefaultCtrlMoveMaxSpeed = mCtrl.moveMaxSpeed;
         mDefaultCtrlMoveForce = mCtrl.moveForce;
@@ -531,7 +543,8 @@ public class Player : EntityBase {
         //set player's starting location based on saved spawn point, if there is one.
         Transform spawnPt = LevelController.GetSpawnPoint();
         if(spawnPt) {
-            transform.position = spawnPt.position + spawnPt.up*collider.bounds.extents.y;
+            mGroundLastValidPos = spawnPt.position + spawnPt.up*collider.bounds.extents.y;
+            transform.position = mGroundLastValidPos;
             transform.rotation = spawnPt.rotation;
         }
 
@@ -955,9 +968,15 @@ public class Player : EntityBase {
     void OnRigidbodyCollisionEnter(RigidBodyController controller, Collision col) {
     }
 
+    void OnJump(PlatformerController ctrl) {
+        if(mGroundSetPosAction != null) { StopCoroutine(mGroundSetPosAction); mGroundSetPosAction = null; }
+    }
+
     void OnLand(PlatformerController ctrl) {
         if(state != (int)EntityState.Invalid) {
             //effects
+
+            if(mGroundSetPosAction == null) { StartCoroutine(mGroundSetPosAction = DoGroundSetPos()); }
         }
     }
 
@@ -975,5 +994,23 @@ public class Player : EntityBase {
 
     void OnTriggerAttacherAttach(TriggerAttacher attacher) {
         mAttacher = attacher;
+    }
+
+    IEnumerator DoGroundSetPos() {
+        if(state == (int)EntityState.Normal)
+            mGroundLastValidPos = transform.position;
+
+        WaitForSeconds wait = new WaitForSeconds(groundSetPosDelay);
+        while(mCtrl.isGrounded) {
+            if(state == (int)EntityState.Normal) {
+                //check ground collision and make sure it doesn't have a body
+                RigidBodyController.CollideInfo inf = mCtrl.GetCollideInfo(CollisionFlags.Below);
+                if(inf != null && inf.collider.rigidbody == null) {
+                    mGroundLastValidPos = transform.position;
+                }
+            }
+
+            yield return wait;
+        }
     }
 }

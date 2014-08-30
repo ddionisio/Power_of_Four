@@ -12,6 +12,8 @@ public class Grab : MonoBehaviour {
 
     public delegate void Callback(Grab grab, Action act);
 
+    public LayerMask ignoreCollision;
+
     [System.NonSerialized]
     public bool isGrabbable = false;
 
@@ -20,6 +22,16 @@ public class Grab : MonoBehaviour {
     public void Grabbed(Grabber grabber) {
         isGrabbable = false;
 
+        if(ignoreCollision != 0) {
+            int layer = gameObject.layer;
+            for(int i = ignoreCollision, l = 0; i != 0; i>>=1, l++) {
+                if((ignoreCollision & (1<<l)) != 0) {
+                    Physics.IgnoreLayerCollision(layer, l, true);
+                }
+
+            }
+        }
+        
         if(actionCallback != null)
             actionCallback(this, Action.Grabbed);
     }
@@ -32,7 +44,17 @@ public class Grab : MonoBehaviour {
     }
 
     public void Impact(Vector3 point, Vector3 normal) {
-        isGrabbable = false;
+        isGrabbable = true;
+
+        if(ignoreCollision != 0) {
+            int layer = gameObject.layer;
+            for(int i = ignoreCollision, l = 0; i != 0; i>>=1, l++) {
+                if((ignoreCollision & (1<<l)) != 0) {
+                    Physics.IgnoreLayerCollision(layer, l, false);
+                }
+
+            }
+        }
 
         if(actionCallback != null)
             actionCallback(this, Action.Impact);

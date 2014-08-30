@@ -38,8 +38,6 @@ public class PlatformerController : RigidBodyController {
     public LayerMask wallStickInvalidMask; //layer masks that do not allow wall stick
 
     public LayerMask plankLayer;
-    public bool plankEnableDrop; //by holding down arrow, drop down
-    public float plankDropDelay; //hold down long enough to drop from plank
     public float plankCheckDelay; //delay to check if we can revert plank collision
 
     public int player = 0;
@@ -78,12 +76,9 @@ public class PlatformerController : RigidBodyController {
 
     private bool mMoveSideLock;
 
-    private bool[] mPlankIsIgnore;
     private bool mPlankCheckActive;
-    private int[] mPlankLayerIndices;
-
-    private float mMoveYGround;
-    private float mMoveYGroundDownLastTime; //last time the down key was pressed
+    private Collider[] mPlankColliders = new Collider[8];
+    private int mPlankCount;
 
     private float mLastGroundTime; //last time we were on ground
 
@@ -106,8 +101,6 @@ public class PlatformerController : RigidBodyController {
                             input.RemoveButtonCall(player, jumpInput, OnInputJump);
 
                         mJumpInputDown = false;
-
-                        mMoveYGround = 0.0f;
                     }
                 }
             }
@@ -164,13 +157,21 @@ public class PlatformerController : RigidBodyController {
         mIsOnPlatformLayerMask = 0;
 
         //clear planking
-        if(mPlankLayerIndices != null && mPlankLayerIndices.Length > 0) {
-            for(int i = 0; i < mPlankLayerIndices.Length; i++) {
-                if(mPlankIsIgnore[i]) {
-                    mPlankIsIgnore[i] = false;
-                    Physics.IgnoreLayerCollision(gameObject.layer, mPlankLayerIndices[i], false);
+        if(mPlankCount > 0) {
+            if(gameObject.activeInHierarchy && collider.enabled) {
+                for(int i = 0; i < mPlankCount; i++) {
+                    if(mPlankColliders[i] && mPlankColliders[i].gameObject.activeInHierarchy && mPlankColliders[i].enabled) {
+                        Physics.IgnoreCollision(collider, mPlankColliders[i], false);
+                    }
+                    mPlankColliders[i] = null;
                 }
             }
+            else {
+                for(int i = 0; i < mPlankCount; i++)
+                    mPlankColliders[i] = null;
+            }
+
+            mPlankCount = 0;
         }
     }
 
@@ -299,43 +300,29 @@ public class PlatformerController : RigidBodyController {
     protected override void RefreshCollInfo() {
         //plank check, see if we need to ignore it
         if(plankLayer != 0) {
-            //check if there's a coll that is a plank
-            int plankFoundLayerInd = -1;
             bool plankFound = false;
-            CollisionFlags plankCollFlag = CollisionFlags.None;
 
+            //check if there's a coll that is a plank
             for(int i = 0; i < mCollCount; i++) {
                 CollideInfo inf = mColls[i];
                 if(inf.collider == null || inf.collider.gameObject == null || !inf.collider.gameObject.activeInHierarchy) {
                     RemoveColl(i);
                     i--;
                 }
-                else if(((1 << inf.collider.gameObject.layer) & plankLayer) != 0) {
-                    plankFoundLayerInd = inf.collider.gameObject.layer;
+                else if(((1 << inf.collider.gameObject.layer) & plankLayer) != 0 && inf.flag != CollisionFlags.Below) {
                     plankFound = true;
-                    plankCollFlag = inf.flag;
-                    if(plankCollFlag != CollisionFlags.Below) {
-                        RemoveColl(i);
-                        i--;
-                    }
+
+                    Collider coll = inf.collider;
+
+                    RemoveColl(i);
+                    i--;
+
+                    SetPlankingIgnore(coll, true);
                 }
             }
 
-            if(plankFound) {
-                if(plankCollFlag == CollisionFlags.Below) {
-                    //check if we are ready to drop
-                    if(plankEnableDrop && mMoveYGround < 0.0f && Time.fixedTime - mMoveYGroundDownLastTime >= plankDropDelay) {
-                        SetPlankingIgnore(plankFoundLayerInd, true);
-                    }
-                }
-                else {
-                    SetLocalVelocityToBody(); //revert rigidbody's velocity :P
-                    SetPlankingIgnore(plankFoundLayerInd, true);
-                }
-            }
-            else if(isGrounded && mMoveYGround < 0.0f) {
-                mMoveYGround = 0.0f;
-            }
+            if(plankFound)
+                SetLocalVelocityToBody();
         }
 
         base.RefreshCollInfo();
@@ -487,16 +474,7 @@ public class PlatformerController : RigidBodyController {
         base.OnDisable();
 
     }
-
-    protected override void Awake() {
-        base.Awake();
-
-        if(plankLayer != 0) {
-            mPlankLayerIndices = M8.PhysicsUtil.GetLayerIndices(plankLayer);
-            mPlankIsIgnore = new bool[mPlankLayerIndices.Length];
-        }
-    }
-
+    
     // Use this for initialization
     void Start() {
         inputEnabled = startInputEnabled;
@@ -510,10 +488,9 @@ public class PlatformerController : RigidBodyController {
         if(mInputEnabled) {
             InputManager input = InputManager.instance;
 
-            float moveX, moveY;
+            float moveX;
 
             moveX = moveInputX != InputManager.ActionInvalid ? input.GetAxis(player, moveInputX) : 0.0f;
-            moveY = moveInputY != InputManager.ActionInvalid ? input.GetAxis(player, moveInputY) : 0.0f;
 
             //movement
             moveForward = 0.0f;
@@ -549,18 +526,6 @@ public class PlatformerController : RigidBodyController {
                 if(!mMoveSideLock) {
                     moveSide = moveX;
                 }
-
-                if(isGrounded) {
-                    //set current move Y and down time while on ground
-                    float newY = moveY < -0.1f ? -1.0f : moveY > 0.1f ? 1.0f : 0.0f;
-                    if(mMoveYGround != newY) {
-                        mMoveYGround = newY;
-                        if(mMoveYGround < 0.0f)
-                            mMoveYGroundDownLastTime = Time.fixedTime;
-                    }
-                }
-                else
-                    mMoveYGround = 0.0f;
             }
 
             //jump
@@ -586,8 +551,6 @@ public class PlatformerController : RigidBodyController {
                 moveSide = 0.0f;
 
             mJump = false;
-
-            mMoveYGround = 0.0f;
         }
 
         base.FixedUpdate();
@@ -682,25 +645,23 @@ public class PlatformerController : RigidBodyController {
     }
 
     //heh...
-    void SetPlankingIgnore(int layer, bool ignore) {
-        if(mPlankLayerIndices == null || mPlankLayerIndices.Length == 0)
-            return;
+    void SetPlankingIgnore(Collider coll, bool ignore) {
+        int ind = System.Array.IndexOf<Collider>(mPlankColliders, coll, 0, mPlankCount);
+        if(ignore) {
+            if(ind == -1 && mPlankCount < mPlankColliders.Length) {
+                Physics.IgnoreCollision(collider, coll);
+                mPlankColliders[mPlankCount] = coll;
+                mPlankCount++;
 
-        int ind = -1;
-        for(int i = 0; i < mPlankLayerIndices.Length; i++) {
-            if(layer == mPlankLayerIndices[i]) {
-                ind = i;
-                break;
-            }
-        }
-
-        if(mPlankIsIgnore[ind] != ignore) {
-            mPlankIsIgnore[ind] = ignore;
-            Physics.IgnoreLayerCollision(gameObject.layer, mPlankLayerIndices[ind], mPlankIsIgnore[ind]);
-
-            if(mPlankIsIgnore[ind]) {
                 if(!mPlankCheckActive)
                     StartCoroutine(DoPlankCheck());
+            }
+        }
+        else {
+            if(ind != -1) {
+                mPlankColliders[ind] = mPlankColliders[mPlankCount-1];
+                mPlankColliders[mPlankCount-1] = null;
+                mPlankCount--;
             }
         }
     }
@@ -709,22 +670,48 @@ public class PlatformerController : RigidBodyController {
         mPlankCheckActive = true;
         WaitForSeconds wait = new WaitForSeconds(plankCheckDelay);
 
-        while(mPlankCheckActive) {
+        Collider col = collider;
+
+        while(mPlankCount > 0) {
             yield return wait;
 
-            int ignoreCount = 0;
-            for(int i = 0, max = mPlankIsIgnore.Length; i < max; i++) {
-                if(mPlankIsIgnore[i]) {
-                    if(!CheckPenetrate(0.01f, 1<<mPlankLayerIndices[i])) {
-                        mPlankIsIgnore[i] = false;
-                        Physics.IgnoreLayerCollision(gameObject.layer, mPlankLayerIndices[i], false);
+            //if(CheckPenetrate(0.01f, plankLayer)) {
+            Vector3 vel = mBody.velocity;
+            float speed = vel.magnitude;
+            if(speed > 0) {
+                RaycastHit[] hits = CheckAllCasts(Vector3.zero, 0.00f, vel/speed, speed*Time.fixedDeltaTime, plankLayer);
+
+                //check if colliders are not in list
+                for(int i = 0; i < mPlankCount; i++) {
+                    bool del = false;
+
+                    if(mPlankColliders[i] == null || !mPlankColliders[i].gameObject.activeSelf)
+                        del = true;
+                    else {
+                        int ind = -1;
+                        for(int j = 0; j < hits.Length; j++) {
+                            if(hits[j].collider == mPlankColliders[i]) {
+                                ind = j; break;
+                            }
+                        }
+
+                        if(ind == -1) {
+                            Physics.IgnoreCollision(col, mPlankColliders[i], false);
+                            del = true;
+                        }
                     }
-                    else
-                        ignoreCount++;
+
+                    if(del) {
+                        mPlankColliders[i] = mPlankColliders[mPlankCount-1];
+                        mPlankColliders[mPlankCount-1] = null;
+                        mPlankCount--;
+                        i--;
+                    }
                 }
             }
-
-            mPlankCheckActive = ignoreCount > 0;
+            //}
         }
+
+        mPlankCheckActive = false;
     }
 }
