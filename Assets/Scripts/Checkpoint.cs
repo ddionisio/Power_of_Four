@@ -8,8 +8,12 @@ public class Checkpoint : SpecialTrigger {
     public string takeActivate = "activate";
     public string takeActive = "active";
 
+    public GameObject triggerActiveGO;
+
     private bool mActivated;
     private AnimatorData mAnimDat;
+
+    private bool mStarted;
 
     public bool isActivated { get { return mActivated; } }
 
@@ -29,17 +33,40 @@ public class Checkpoint : SpecialTrigger {
                 //save game
                 player.Save();
             }
+
+            triggerActiveGO.SetActive(true);
         }
+    }
+
+    void OnTriggerExit(Collider col) {
+        Player player = Player.instance;
+
+        if(col == player.collider) {
+            triggerActiveGO.SetActive(false);
+        }
+    }
+
+    void OnEnable() {
+        if(mStarted) {
+            mActivated = SceneState.instance.GetValue(name) != 0;
+            if(mAnimDat)
+                mAnimDat.Play(mActivated ? takeActive : takeInactive);
+        }
+    }
+
+    void OnDisable() {
+        triggerActiveGO.SetActive(false);
     }
 
     void Awake() {
         mAnimDat = GetComponent<AnimatorData>();
+
+        triggerActiveGO.SetActive(false);
     }
 
     void Start() {
-        mActivated = SceneState.instance.GetValue(name) != 0;
-        if(mAnimDat)
-            mAnimDat.Play(mActivated ? takeActive : takeInactive);
+        mStarted = true;
+        OnEnable();
     }
 
     protected override IEnumerator Act() {
@@ -54,6 +81,7 @@ public class Checkpoint : SpecialTrigger {
         if(!mActivated) {
             mActivated = true;
             SceneState.instance.SetValue(name, 1, true);
+
             StartCoroutine(DoActivate());
         }
     }
@@ -64,7 +92,6 @@ public class Checkpoint : SpecialTrigger {
             mAnimDat.Play(takeActivate);
             while(mAnimDat.isPlaying)
                 yield return wait;
-            mAnimDat.Play(takeActive);
         }
     }
 }
