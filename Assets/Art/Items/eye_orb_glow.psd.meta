@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: 173985e71a8d63b41886c3cd98917a84
+guid: 4df2c2c748fbfae46b67d729cf06a74d
 TextureImporter:
   fileIDToRecycleName:
-    21300000: eyeInsert_base
+    21300000: eye_orb_glow
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 1
+  alignment: 0
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32
@@ -44,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: LevelCommon
+  spritePackingTag: Player
   userData: 

@@ -10,6 +10,7 @@ public class EyeOrbInsert : MonoBehaviour {
     public int index;
 
     public string takeActivate = "activate";
+    public string takeActivateFinish = "activatefinish"; //do some flashing thing once the eye is in
     public string takeActive = "active"; //after travel is finish, or orb is already inserted
 
     public Transform eyeInsertPoint;
@@ -58,6 +59,10 @@ public class EyeOrbInsert : MonoBehaviour {
     IEnumerator DoIt() {
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
+        //play activate, should be repeating
+        if(mAnim)
+            mAnim.Play(takeActivate);
+
         Vector3 srcPt = mEyeOrb.position;
         Vector3 destPt = eyeInsertPoint ? eyeInsertPoint.position : transform.position;
 
@@ -80,7 +85,7 @@ public class EyeOrbInsert : MonoBehaviour {
 
         //do animation
         if(mAnim) {
-            mAnim.Play(takeActivate);
+            mAnim.Play(takeActivateFinish);
             while(mAnim.isPlaying)
                 yield return wait;
 

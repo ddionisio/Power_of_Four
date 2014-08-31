@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: 173985e71a8d63b41886c3cd98917a84
+guid: b4899b820135ab5419a90e47ff2d7de4
 TextureImporter:
   fileIDToRecycleName:
-    21300000: eyeInsert_base
+    21300000: eyeInsert_rot_1
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 1
+  alignment: 7
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32

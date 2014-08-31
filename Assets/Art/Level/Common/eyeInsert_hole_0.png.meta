@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: fb3eb3bb10eb7474da2218ca23ce3cb1
+guid: 07f3323386ac72044a8c64dcfcbe723c
 TextureImporter:
   fileIDToRecycleName:
-    21300000: eyeOrb_base
+    21300000: eyeInsert_hole_0
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -44,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: Player
+  spritePackingTag: LevelCommon
   userData: 
