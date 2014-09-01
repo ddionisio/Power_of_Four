@@ -72,7 +72,6 @@ public class Player : EntityBase {
     private int mCurBuddyInd = -1;
     private int mPauseCounter;
     private bool mAllowPauseTime = true;
-    private PlayMakerFSM mSpecialTriggerFSM;
     private SpecialTrigger mSpecialTrigger; //trigger that can be activated by action
     private LookDir mCurLook = LookDir.Front;
     private GameObject[] mActionIcons;
@@ -555,10 +554,9 @@ public class Player : EntityBase {
 
     void OnTriggerEnter(Collider col) {
         if(IsSpecialTrigger(col)) {
-            mSpecialTriggerFSM = col.GetComponent<PlayMakerFSM>();
             mSpecialTrigger = col.GetComponent<SpecialTrigger>();
 
-            if((mSpecialTrigger && mSpecialTrigger.enabled && !mSpecialTrigger.isActing && mSpecialTrigger.interactive) || mSpecialTriggerFSM) {
+            if(mSpecialTrigger && mSpecialTrigger.enabled) {
                 //set icon
                 string iconRef = mSpecialTrigger && !string.IsNullOrEmpty(mSpecialTrigger.iconRef) ? mSpecialTrigger.iconRef : actionIconDefault;
                 if(!string.IsNullOrEmpty(iconRef)) {
@@ -579,8 +577,7 @@ public class Player : EntityBase {
 
     void OnTriggerExit(Collider col) {
         if(IsSpecialTrigger(col)) {
-            if((mSpecialTrigger && col == mSpecialTrigger.collider) || (mSpecialTriggerFSM && col == mSpecialTriggerFSM.collider)) {
-                mSpecialTriggerFSM = null;
+            if(mSpecialTrigger && col == mSpecialTrigger.collider) {
                 mSpecialTrigger = null;
                 SetActionIcon(-1);
             }
@@ -626,6 +623,8 @@ public class Player : EntityBase {
                 mUpIsPressed = false;
             }
         }
+
+        //TODO: mSpecialTrigger, check if can interact, then enable overlap 'no sign'
     }
 
     #region Stats/Weapons
@@ -762,12 +761,9 @@ public class Player : EntityBase {
     }
 
     void UpPressed() {
-        if(mSpecialTrigger || mSpecialTriggerFSM) {
+        if(mSpecialTrigger) {
             if(currentBuddy)
                 currentBuddy.FireStop();
-
-            if(mSpecialTriggerFSM)
-                mSpecialTriggerFSM.SendEvent(EntityEvent.Interact);
 
             if(mSpecialTrigger && mSpecialTrigger.enabled && !mSpecialTrigger.isActing && mSpecialTrigger.interactive)
                 mSpecialTrigger.Action(OnSpecialTriggerActFinish);

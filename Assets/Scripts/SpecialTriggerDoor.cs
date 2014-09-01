@@ -15,20 +15,21 @@ public class SpecialTriggerDoor : SpecialTrigger {
 
     private AnimatorData mAnim;
     private bool mClosed;
+    private bool mOpening;
+    private bool mStarted;
+
+    public void Open() {
+        if(mClosed && !mOpening) {
+            StartCoroutine(DoOpening());
+        }
+    }
 
     protected override IEnumerator Act() {
         if(mClosed) {
-            if(mAnim) {
-                WaitForFixedUpdate wait = new WaitForFixedUpdate();
-
-                mAnim.Play(takeOpening);
-                while(mAnim.isPlaying)
-                    yield return wait;
-
-                mAnim.Play(takeOpened);
-            }
-
-            mClosed = false;
+            Open();
+            WaitForFixedUpdate wait = new WaitForFixedUpdate();
+            while(mClosed)
+                yield return wait;
         }
     }
 
@@ -53,17 +54,50 @@ public class SpecialTriggerDoor : SpecialTrigger {
         }
     }
 
+    void OnEnable() {
+        if(mStarted) {
+            if(mAnim) {
+                if(mClosed)
+                    mAnim.Play(takeClosed);
+                else
+                    mAnim.Play(takeOpened);
+            }
+        }
+    }
+
+    protected override void OnDisable() {
+        if(mOpening) {
+            mOpening = false;
+            mClosed = false;
+        }
+
+        base.OnDisable();
+    }
+
     void Awake() {
         mAnim = GetComponent<AnimatorData>();
     }
 
     void Start() {
         mClosed = startClosed;
+        mStarted = true;
+        OnEnable();
+    }
+
+    IEnumerator DoOpening() {
         if(mAnim) {
-            if(mClosed)
-                mAnim.Play(takeClosed);
-            else
-                mAnim.Play(takeOpened);
+            mOpening = true;
+
+            WaitForFixedUpdate wait = new WaitForFixedUpdate();
+
+            mAnim.Play(takeOpening);
+            while(mAnim.isPlaying)
+                yield return wait;
+
+            mAnim.Play(takeOpened);
         }
+
+        mClosed = false;
+        mOpening = false;
     }
 }

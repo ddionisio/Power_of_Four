@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: 2661fa7bc1c5b984fa7deae37e0f2e60
+guid: 743223c8b8371d94cb4fff24f33426e9
 TextureImporter:
   fileIDToRecycleName:
-    21300000: checkpoint_opened
+    21300000: bossDoor_lower
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 7
+  alignment: 8
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32

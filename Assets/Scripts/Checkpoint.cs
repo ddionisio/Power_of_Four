@@ -54,8 +54,10 @@ public class Checkpoint : SpecialTrigger {
         }
     }
 
-    void OnDisable() {
+    protected override void OnDisable() {
         triggerActiveGO.SetActive(false);
+
+        base.OnDisable();
     }
 
     void Awake() {

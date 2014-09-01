@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: f943498160abe0d4ab423a6640a7c5e0
+guid: 6640adc502d405b41a4bc8a8b6655adf
 TextureImporter:
   fileIDToRecycleName:
-    21300000: eye_open
+    21300000: bossDoor_inner
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -35,7 +35,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 0
+  alignment: 8
   spritePivot: {x: .5, y: .5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 32

@@ -37,7 +37,7 @@ public class LevelController : MonoBehaviour {
 
     private GameObject[] mEyeInserts; //these are filled for main level
 
-    private SpecialTrigger mBossDoor;
+    private SpecialTriggerDoor mBossDoor;
 
     private int mPickUpBits; //filled upon start
 
@@ -195,7 +195,10 @@ public class LevelController : MonoBehaviour {
                     if(placedCount == mEyeOrbStates.Length) {
                         mMainLevelState = State.BossDoorUnlocked;
 
-                        UnlockBossDoor();
+                        if(mBossDoor) {
+                            mBossDoor.interactive = true;
+                            mBossDoor.Open();
+                        }
 
                         Player.instance.Save();
                     }
@@ -233,11 +236,8 @@ public class LevelController : MonoBehaviour {
                 mEyeInserts = GameObject.FindGameObjectsWithTag(eyeInsertTagCheck);
 
                 GameObject bossDoorGO = GameObject.FindGameObjectWithTag(bossDoorTagCheck);
-                if(bossDoorGO) {
-                    mBossDoor = bossDoorGO.GetComponent<SpecialTrigger>();
-                    if(mBossDoor)
-                        mBossDoor.interactive = false;
-                }
+                if(bossDoorGO)
+                    mBossDoor = bossDoorGO.GetComponent<SpecialTriggerDoor>();
             }
         }
     }
@@ -264,8 +264,16 @@ public class LevelController : MonoBehaviour {
 
         LoadMainLevelStates();
 
-        if(mMainLevelState == State.BossDoorUnlocked)
-            UnlockBossDoor();
+        if(mBossDoor) {
+            if(mMainLevelState == State.BossDoorUnlocked) {
+                mBossDoor.startClosed = false;
+                mBossDoor.interactive = true;
+            }
+            else {
+                mBossDoor.startClosed = true;
+                mBossDoor.interactive = false;
+            }
+        }
 
         //add eye orbs to player based on state
         StartCoroutine(DoAddPlayerEyeOrbs());
@@ -331,10 +339,5 @@ public class LevelController : MonoBehaviour {
                 eyeOrbPlayer.Add(playerPos, i);
             }
         }
-    }
-
-    void UnlockBossDoor() {
-        if(mBossDoor) //TODO: add glowiness and stuff?
-            mBossDoor.interactive = true;
     }
 }
