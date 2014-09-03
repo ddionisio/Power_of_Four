@@ -27,6 +27,8 @@ public class Enemy : EntityBase {
     public float knockJumpDelay = 0.1f;
     public float knockDuration = 2.0f;
 
+    protected Rigidbody mBody;
+
     private PlatformerController mCtrl;
     private GravityController mCtrlGravity;
     private PlatformerAnimatorController mCtrlAnim;
@@ -34,7 +36,6 @@ public class Enemy : EntityBase {
     private EnemyStats mStats;
     private Blinker mBlink;
 
-    private Rigidbody mBody;
     private bool mBodyKinematicDefault;
 
     private Damage[] mDamageTriggers;
@@ -48,6 +49,8 @@ public class Enemy : EntityBase {
     public PlatformerController bodyCtrl { get { return mCtrl; } }
     public GravityController gravityCtrl { get { return mCtrlGravity; } }
     public PlatformerAnimatorController bodySpriteCtrl { get { return mCtrlAnim; } }
+
+    public bool isAnimPlaying { get { return mCtrlAnim ? mCtrlAnim.overrideIsPlaying : mAnim.isPlaying; } }
 
     public void Jump(float delay) {
         if(mCtrl) {
@@ -95,21 +98,27 @@ public class Enemy : EntityBase {
         }
     }
 
-    protected override void ActivatorWakeUp() {
-        base.ActivatorWakeUp();
 
-        if(animatorControl && animatorControl.onDisableAction == AnimatorData.DisableAction.Pause) {
-            animatorControl.Resume();
+
+    protected override void OnEnable() {
+        base.OnEnable();
+
+        if(state != (int)EntityState.Invalid) {
+            if(animatorControl && animatorControl.onDisableAction == AnimatorData.DisableAction.Pause) {
+                animatorControl.Resume();
+            }
+
+            //resume any actions
+            RunStateAction();
         }
+    }
 
-        //resume any actions
-        RunStateAction();
+    protected virtual void OnDisable() {
+        mCurStateAction = null;
     }
 
     protected override void ActivatorSleep() {
         base.ActivatorSleep();
-
-        mCurStateAction = null;
 
         switch((EntityState)state) {
             case EntityState.Dead:
@@ -212,7 +221,7 @@ public class Enemy : EntityBase {
                 }
 
                 //play death animation
-                if(mCtrlAnim || mAnim)
+                if((mCtrlAnim || mAnim) && !string.IsNullOrEmpty(takeDeath))
                     PlayAnim(takeDeath);
                 else if(releaseOnDeath)
                     Release();
@@ -386,7 +395,7 @@ public class Enemy : EntityBase {
     //Actions
 
     //Perform current state's action
-    void RunStateAction() {
+    protected virtual void RunStateAction() {
         switch((EntityState)state) {
             case EntityState.Knocked:
                 StartCoroutine(mCurStateAction = DoKnock());

@@ -49,13 +49,10 @@ public class Projectile : EntityBase {
     public float seekVelocity;
     public float seekVelocityCap = 5.0f;
     public float seekTurnAngleCap = 360.0f;
-    public bool decayEnabled = false;
     public float decayDelay;
+    public float decayBlinkDelayScale;
     public bool releaseOnDie = true;
-    public float dieDelay;
-    public bool dieBlink;
     public bool dieDisablePhysics = true;
-    public bool releaseOnSleep;
     public LayerMask explodeMask;
     public float explodeForce;
     public ForceMode explodeForceMode;
@@ -84,6 +81,8 @@ public class Projectile : EntityBase {
     public float oscillateForce;
     public float oscillateDelay;*/
 
+    protected Rigidbody mBody;
+
     private bool mSpawning = false;
     protected Vector3 mActiveForce;
     protected Vector3 mInitDir = Vector3.zero;
@@ -103,6 +102,8 @@ public class Projectile : EntityBase {
 
     private Vector3 mSeekCurDir;
     private Vector3 mSeekCurDirVel;
+
+    private IEnumerator mDecayAction;
 
     //private Vector2 mOscillateDir;
     //private bool mOscillateSwitch;
@@ -145,14 +146,14 @@ public class Projectile : EntityBase {
         get {
             if(simple)
                 return mCurVelocity;
-            return rigidbody != null ? rigidbody.velocity : Vector3.zero;
+            return mBody != null ? mBody.velocity : Vector3.zero;
         }
 
         set {
             if(simple)
                 mCurVelocity = value;
-            else if(rigidbody)
-                rigidbody.velocity = value;
+            else if(mBody)
+                mBody.velocity = value;
         }
     }
 
@@ -185,8 +186,9 @@ public class Projectile : EntityBase {
 
         mDefaultSpeedLimit = speedLimit;
 
-        if(rigidbody != null && autoDisableCollision) {
-            rigidbody.detectCollisions = false;
+        mBody = rigidbody;
+        if(mBody != null && autoDisableCollision) {
+            mBody.detectCollisions = false;
         }
 
         if(collider != null && autoDisableCollision)
@@ -215,7 +217,7 @@ public class Projectile : EntityBase {
     protected override void ActivatorSleep() {
         base.ActivatorSleep();
 
-        if(!mSpawning && isAlive && releaseOnSleep) {
+        if(!mSpawning && isAlive) {
             activator.ForceActivate();
             Release();
         }
@@ -234,9 +236,9 @@ public class Projectile : EntityBase {
             mCurVelocity = mInitDir * startVelocity;
         }
         else {
-            if(rigidbody != null && mInitDir != Vector3.zero) {
+            if(mBody != null && mInitDir != Vector3.zero) {
                 //set velocity
-                if(!rigidbody.isKinematic) {
+                if(!mBody.isKinematic) {
                     if(startVelocityAddRand != 0.0f) {
                         mInitialVelocity = startVelocity + Random.value * startVelocityAddRand;
                     }
@@ -244,15 +246,15 @@ public class Projectile : EntityBase {
                         mInitialVelocity = startVelocity;
                     }
 
-                    rigidbody.velocity = mInitDir * mInitialVelocity;
+                    mBody.velocity = mInitDir * mInitialVelocity;
                 }
 
                 mActiveForce = mInitDir * force;
             }
         }
 
-        if(decayEnabled)
-            Invoke("OnDecayEnd", decayDelay);
+        if(decayDelay > 0f)
+            StartCoroutine(mDecayAction = DoDecay());
 
         if(seekStartDelay > 0.0f) {
             state = (int)State.Active;
@@ -290,8 +292,8 @@ public class Projectile : EntityBase {
                 if(collider)
                     collider.enabled = true;
 
-                if(rigidbody)
-                    rigidbody.detectCollisions = true;
+                if(mBody)
+                    mBody.detectCollisions = true;
 
                 if(mStats)
                     mStats.isInvul = false;
@@ -303,15 +305,7 @@ public class Projectile : EntityBase {
                 if(dieDisablePhysics)
                     PhysicsDisable();
 
-                if(dieDelay > 0) {
-                    if(dieBlink && mBlink)
-                        mBlink.Blink(dieDelay);
-
-                    CancelInvoke("Die");
-                    Invoke("Die", dieDelay);
-                }
-                else
-                    Die();
+                Die();
 
                 if(dyingSfx && !dyingSfx.isPlaying)
                     dyingSfx.Play();
@@ -328,6 +322,11 @@ public class Projectile : EntityBase {
                     mStats.isInvul = true;
                 }
 
+                if(mBlink)
+                    mBlink.Stop();
+
+                if(mDecayAction != null) { StopCoroutine(mDecayAction); mDecayAction = null; }
+
                 mSpawning = false;
                 break;
         }
@@ -338,13 +337,13 @@ public class Projectile : EntityBase {
         if(collider && autoDisableCollision)
             collider.enabled = false;
 
-        if(rigidbody) {
+        if(mBody) {
             if(autoDisableCollision)
-                rigidbody.detectCollisions = false;
+                mBody.detectCollisions = false;
 
-            if(!rigidbody.isKinematic) {
-                rigidbody.velocity = Vector3.zero;
-                rigidbody.angularVelocity = Vector3.zero;
+            if(!mBody.isKinematic) {
+                mBody.velocity = Vector3.zero;
+                mBody.angularVelocity = Vector3.zero;
             }
         }
     }
@@ -390,8 +389,8 @@ public class Projectile : EntityBase {
             case ContactType.Stop:
                 if(simple)
                     mCurVelocity = Vector3.zero;
-                else if(rigidbody != null)
-                    rigidbody.velocity = Vector3.zero;
+                else if(mBody != null)
+                    mBody.velocity = Vector3.zero;
                 break;
 
             case ContactType.Bounce:
@@ -408,14 +407,14 @@ public class Projectile : EntityBase {
                         }
                     }
                     else {
-                        if(rigidbody != null) {
+                        if(mBody != null) {
                             if(bounceSurfaceOfs != 0.0f) {
                                 Vector3 p = transform.position;
                                 p += normal*bounceSurfaceOfs;
-                                rigidbody.MovePosition(p);
+                                mBody.MovePosition(p);
                             }
 
-                            Vector3 reflVel = Vector3.Reflect(rigidbody.velocity, normal);
+                            Vector3 reflVel = Vector3.Reflect(mBody.velocity, normal);
 
                             //TODO: this is only for 2D
                             switch(forceBounce) {
@@ -475,13 +474,13 @@ public class Projectile : EntityBase {
                     else {
                         mActiveForce = Quaternion.AngleAxis(bounceRotateAngle, Vector3.forward) * mCurVelocity;
 
-                        if(rigidbody != null) {
-                            rigidbody.velocity = Quaternion.AngleAxis(bounceRotateAngle, Vector3.forward) * rigidbody.velocity;
+                        if(mBody != null) {
+                            mBody.velocity = Quaternion.AngleAxis(bounceRotateAngle, Vector3.forward) * mBody.velocity;
 
                             if(bounceSurfaceOfs != 0.0f) {
                                 Vector3 p = transform.position;
                                 p += normal*bounceSurfaceOfs;
-                                rigidbody.MovePosition(p);
+                                mBody.MovePosition(p);
                             }
                         }
                     }
@@ -545,7 +544,18 @@ public class Projectile : EntityBase {
         ApplyContact(collider.gameObject, -mover.dir);
     }*/
 
-    void OnDecayEnd() {
+    IEnumerator DoDecay() {
+        if(mBlink && decayBlinkDelayScale > 0f) {
+            float _decayBlinkDelay = decayBlinkDelayScale*decayDelay;
+            
+            yield return new WaitForSeconds(decayDelay - _decayBlinkDelay);
+
+            mBlink.Blink(_decayBlinkDelay);
+            yield return new WaitForSeconds(_decayBlinkDelay);
+        }
+        else
+            yield return new WaitForSeconds(decayDelay);
+
         mLastHit.col = collider;
         mLastHit.normal = Vector3.down;
         mLastHit.point = transform.position;
@@ -573,8 +583,8 @@ public class Projectile : EntityBase {
             applyDirToUp.up = mCurVelocity;
         }
         else {
-            if(rigidbody != null && rigidbody.velocity != Vector3.zero) {
-                applyDirToUp.up = rigidbody.velocity;
+            if(mBody != null && mBody.velocity != Vector3.zero) {
+                applyDirToUp.up = mBody.velocity;
             }
         }
     }
@@ -613,7 +623,10 @@ public class Projectile : EntityBase {
                 mLastHit.normal = hit.normal;
                 mLastHit.point = hit.point;
 
-                transform.position = hit.point + hit.normal * mSphereColl.radius;
+                if(mBody)
+                    mBody.MovePosition(hit.point + hit.normal * mSphereColl.radius);
+                else
+                    transform.position = hit.point + hit.normal * mSphereColl.radius;
 
                 ProcessContact(hit.collider.gameObject, hit.point, hit.normal);
             }
@@ -624,8 +637,12 @@ public class Projectile : EntityBase {
         }
 
         //make sure we are still active
-        if(isAlive)
-            transform.position = transform.position + dir*distance;
+        if(isAlive) {
+            if(mBody)
+                mBody.MovePosition(transform.position + dir*distance);
+            else
+                transform.position = transform.position + dir*distance;
+        }
     }
 
     void DoSimple() {
@@ -646,22 +663,22 @@ public class Projectile : EntityBase {
                     DoSimple();
                 }
                 else {
-                    if(rigidbody != null) {
+                    if(mBody != null) {
                         if(speedLimit > 0.0f) {
-                            float sqrSpd = rigidbody.velocity.sqrMagnitude;
+                            float sqrSpd = mBody.velocity.sqrMagnitude;
                             if(sqrSpd > speedLimit * speedLimit) {
-                                rigidbody.velocity = (rigidbody.velocity / Mathf.Sqrt(sqrSpd)) * speedLimit;
+                                mBody.velocity = (mBody.velocity / Mathf.Sqrt(sqrSpd)) * speedLimit;
                             }
                         }
 
                         if(mActiveForce != Vector3.zero)
-                            rigidbody.AddForce(mActiveForce * mMoveScale);
+                            mBody.AddForce(mActiveForce * mMoveScale);
                     }
                 }
                 break;
 
             case State.SeekForce:
-                if(rigidbody && mSeek != null) {
+                if(mBody && mSeek != null) {
                     Vector3 pos = transform.position;
                     Vector3 dest = mSeek.position;
                     Vector3 _dir = dest - pos; _dir.z = 0.0f;
@@ -681,13 +698,13 @@ public class Projectile : EntityBase {
                     }
 
                     if(speedLimit > 0.0f) {
-                        float sqrSpd = rigidbody.velocity.sqrMagnitude;
+                        float sqrSpd = mBody.velocity.sqrMagnitude;
                         if(sqrSpd > speedLimit * speedLimit) {
-                            rigidbody.velocity = (rigidbody.velocity / Mathf.Sqrt(sqrSpd)) * speedLimit;
+                            mBody.velocity = (mBody.velocity / Mathf.Sqrt(sqrSpd)) * speedLimit;
                         }
                     }
 
-                    rigidbody.AddForce(mSeekCurDir * force * mMoveScale);
+                    mBody.AddForce(mSeekCurDir * force * mMoveScale);
                 }
                 break;
 
@@ -705,17 +722,17 @@ public class Projectile : EntityBase {
 
                             //restrict
                             if(seekTurnAngleCap < 360.0f) {
-                                _dir = M8.MathUtil.DirCap(rigidbody.velocity.normalized, _dir, seekTurnAngleCap);
+                                _dir = M8.MathUtil.DirCap(mBody.velocity.normalized, _dir, seekTurnAngleCap);
                             }
 
-                            mCurVelocity = M8.MathUtil.Steer(rigidbody.velocity, _dir * seekVelocity, seekVelocityCap, mMoveScale);
+                            mCurVelocity = M8.MathUtil.Steer(mBody.velocity, _dir * seekVelocity, seekVelocityCap, mMoveScale);
                         }
                     }
 
                     DoSimple();
                 }
                 else {
-                    if(rigidbody != null && mSeek != null) {
+                    if(mBody != null && mSeek != null) {
                         //steer torwards seek
                         Vector3 pos = transform.position;
                         Vector3 dest = mSeek.position;
@@ -727,11 +744,11 @@ public class Projectile : EntityBase {
 
                             //restrict
                             if(seekTurnAngleCap < 360.0f) {
-                                _dir = M8.MathUtil.DirCap(rigidbody.velocity.normalized, _dir, seekTurnAngleCap);
+                                _dir = M8.MathUtil.DirCap(mBody.velocity.normalized, _dir, seekTurnAngleCap);
                             }
 
-                            Vector3 force = M8.MathUtil.Steer(rigidbody.velocity, _dir * seekVelocity, seekVelocityCap, 1.0f);
-                            rigidbody.AddForce(force, ForceMode.VelocityChange);
+                            Vector3 force = M8.MathUtil.Steer(mBody.velocity, _dir * seekVelocity, seekVelocityCap, 1.0f);
+                            mBody.AddForce(force, ForceMode.VelocityChange);
                         }
                     }
                 }

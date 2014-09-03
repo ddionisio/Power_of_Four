@@ -97,6 +97,10 @@ public class PlatformerAnimatorController : MonoBehaviour {
         }
     }
 
+    public bool overrideIsPlaying {
+        get { return !string.IsNullOrEmpty(mOverrideTakeName) && anim.isPlaying; }
+    }
+
     public void RefreshFacing() {
         SetFlipX(mIsLeft ? leftFlip : !leftFlip);
     }

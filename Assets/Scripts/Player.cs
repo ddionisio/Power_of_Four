@@ -266,6 +266,11 @@ public class Player : EntityBase {
         switch((EntityState)state) {
             case EntityState.Normal:
                 inputEnabled = true;
+
+                if(InputManager.instance.IsDown(0, InputAction.Primary)) {
+                    if(currentBuddy)
+                        currentBuddy.FireStart();
+                }
                 break;
 
             case EntityState.Hurt:
@@ -285,6 +290,8 @@ public class Player : EntityBase {
                     //hurt delay
                     StartCoroutine(DoHurt());
                 }
+                else
+                    state = (int)EntityState.Normal;
                 break;
 
             case EntityState.Dead:
