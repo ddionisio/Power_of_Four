@@ -170,7 +170,7 @@ public class LevelController : MonoBehaviour {
     /// </summary>
     public void PickUpBitSet(int bit, bool set) {
         if(M8.Util.FlagCheckBit(mPickUpBits, bit) != set) {
-            M8.Util.FlagSetBit(mPickUpBits, bit, set);
+            mPickUpBits = M8.Util.FlagSetBit(mPickUpBits, bit, set);
             SaveMainLevelStates();
         }
     }
@@ -179,10 +179,10 @@ public class LevelController : MonoBehaviour {
         return mEyeOrbStates[index];
     }
 
-    public void eyeOrbSetState(int index, EyeOrbState state) {
+    public void eyeOrbSetState(int index, EyeOrbState state, bool save) {
         if(mEyeOrbStates[index] != state) {
             mEyeOrbStates[index] = state;
-            SaveMainLevelStates();
+            if(save) SaveMainLevelStates();
             if(state == EyeOrbState.Placed) {
                 //check if all is placed, then boss door open
                 if(mMainLevelState == State.None) {
@@ -200,7 +200,7 @@ public class LevelController : MonoBehaviour {
                             mBossDoor.Open();
                         }
 
-                        Player.instance.Save();
+                        if(save) Player.instance.Save();
                     }
                 }
             }
@@ -211,10 +211,10 @@ public class LevelController : MonoBehaviour {
         return mEyeInsertIsFilled[index];
     }
 
-    public void eyeInsertSetFilled(int index, bool filled) {
+    public void eyeInsertSetFilled(int index, bool filled, bool save) {
         if(mEyeInsertIsFilled[index] != filled) {
             mEyeInsertIsFilled[index] = filled;
-            SaveMainLevelStates();
+            if(save) SaveMainLevelStates();
         }
     }
 
@@ -291,8 +291,8 @@ public class LevelController : MonoBehaviour {
         int eyeStates = UserData.instance.GetInt(levelName+"_se", 0);
         int eyeInserts = UserData.instance.GetInt(levelName+"_sei", 0);
         for(int i = 0; i < mEyeOrbStates.Length; i++) {
-            eyeOrbSetState(i, (EyeOrbState)(eyeStates&3)); //this will change main level state if all is collected
-            eyeInsertSetFilled(i, (eyeInserts&1) != 0);
+            eyeOrbSetState(i, (EyeOrbState)(eyeStates&3), false); //this will change main level state if all is collected
+            eyeInsertSetFilled(i, (eyeInserts&1) != 0, false);
 
             eyeStates>>=2;
             eyeInserts>>=1;

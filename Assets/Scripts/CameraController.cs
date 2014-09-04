@@ -29,6 +29,7 @@ public class CameraController : MonoBehaviour {
     private float mCurDelay;
     private bool mFirstTimeSnap;
     private float mDelayScale = 1.0f;
+    private CameraField mLastCameraField;
 
     public static CameraController instance { get { return mInstance; } }
 
@@ -66,7 +67,28 @@ public class CameraController : MonoBehaviour {
 
     public Camera2D camera2D { get { return mCam; } }
 
-    public void SetTransition(bool transition) {
+    public CameraField cameraField { 
+        get { return mLastCameraField; }
+        set {
+            if(mLastCameraField != value) {
+                mLastCameraField = value;
+                if(mLastCameraField) {
+                    mode = mLastCameraField.mode;
+
+                    Bounds setBounds = mLastCameraField.bounds;
+                    setBounds.center += mLastCameraField.transform.position;
+
+                    bounds = setBounds;
+
+                    attach = mLastCameraField.attach;
+
+                    SetTransition(mLastCameraField.doTransition);
+                }
+            }
+        }
+    }
+
+    void SetTransition(bool transition) {
         mDoTrans = transition;
         mLastTransTime = Time.fixedTime;
         mCurVel = Vector3.zero;

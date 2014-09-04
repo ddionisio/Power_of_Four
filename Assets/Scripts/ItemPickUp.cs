@@ -69,11 +69,9 @@ public class ItemPickUp : EntityBase {
     }
 
     void OnTriggerEnter(Collider col) {
-        if(state == (int)State.Active) {
-            Player player = col.GetComponent<Player>();
-            if(player)
-                PickUp(player);
-        }
+        Player player = col.GetComponent<Player>();
+        if(player)
+            PickUp(player);
     }
 
     protected override void OnDespawned() {
@@ -112,7 +110,7 @@ public class ItemPickUp : EntityBase {
 
             case State.PickUp:
                 if(savePickUp)
-                LevelController.instance.PickUpBitSet(savePickUpBit, true);
+                    LevelController.instance.PickUpBitSet(savePickUpBit, true);
 
                 if(collider)
                     collider.enabled = false;
@@ -135,28 +133,33 @@ public class ItemPickUp : EntityBase {
         state = (int)State.Active;
     }
 
-    protected override void SpawnStart() {
-        //initialize some things
+    protected override void OnSpawned() {
+        base.OnSpawned();
 
-        //check if already picked up
-        if(LevelController.instance.PickUpBitIsSet(savePickUpBit)) {
-            autoSpawnFinish = false;
-            Release();
-        }
-        else
-            autoSpawnFinish = true;
+        if(collider)
+            collider.enabled = false;
+
     }
 
     protected override void Awake() {
         base.Awake();
 
-        //initialize variables
-        if(collider)
-            collider.enabled = false;
-        
         mBlinkers = GetComponentsInChildren<SpriteColorBlink>(true);
         foreach(SpriteColorBlink blinker in mBlinkers)
             blinker.enabled = false;
+
+        autoSpawnFinish = true;
+    }
+
+    protected override void Start() {
+        base.Start();
+
+        bool doDisable = savePickUp ? LevelController.instance.PickUpBitIsSet(savePickUpBit) : false;
+        if(doDisable) {
+            if(activator)
+                activator.ForceActivate();
+            gameObject.SetActive(false);
+        }
     }
 
     void OnDrawGizmosSelected() {

@@ -16,12 +16,15 @@ public class CameraAttachPlayer : CameraAttach {
     private PlatformerController mPlayerCtrl;
     private CameraController mCamCtrl;
     private bool mCameraIsWallStick = false;
+    private Player.LookDir mLookDir = Player.LookDir.Invalid;
+
+    public Player.LookDir lookDir { get { return mLookDir; } set { mLookDir = value; } }
 
     public override Vector3 position {
         get {
-            if(mPlayer.lookDir == Player.LookDir.Invalid) return base.position;
-                        
-            int ind = (int)mPlayer.lookDir;
+            if(mLookDir == Player.LookDir.Invalid) return base.position;
+
+            int ind = (int)mLookDir;
             Transform t = points[ind];
             Vector3 pos;
 

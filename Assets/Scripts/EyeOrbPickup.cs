@@ -7,7 +7,7 @@ public class EyeOrbPickup : MonoBehaviour {
     private EntityActivator mActivator;
 
     void OnTriggerEnter(Collider col) {
-        LevelController.instance.eyeOrbSetState(index, LevelController.EyeOrbState.Collected);
+        LevelController.instance.eyeOrbSetState(index, LevelController.EyeOrbState.Collected, true);
         EyeOrbPlayer.instance.Add(transform.position, index);
         gameObject.SetActive(false);
     }

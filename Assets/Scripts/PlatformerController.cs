@@ -196,7 +196,7 @@ public class PlatformerController : RigidBodyController {
     /// Call this for manual input jumping
     /// </summary>
     public void Jump(bool down) {
-        if(mJumpInputDown != down && !rigidbody.isKinematic) {
+        if(mJumpInputDown != down && !mBody.isKinematic) {
             mJumpInputDown = down;
 
             if(mJumpInputDown) {
@@ -207,15 +207,15 @@ public class PlatformerController : RigidBodyController {
                 }
                 else if(canWallJump) {
 
-                    rigidbody.velocity = Vector3.zero;
+                    mBody.velocity = Vector3.zero;
                     lockDrag = true;
-                    rigidbody.drag = airDrag;
+                    mBody.drag = airDrag;
 
                     Vector3 impulse = mWallStickCollInfo.normal * jumpWallImpulse;
                     impulse += dirHolder.up * jumpWallUpImpulse;
 
                     PrepJumpVel();
-                    rigidbody.AddForce(impulse, ForceMode.Impulse);
+                    mBody.AddForce(impulse, ForceMode.Impulse);
 
                     mJumpingWall = true;
                     mJump = true;
@@ -233,11 +233,11 @@ public class PlatformerController : RigidBodyController {
                 else if(!isSlopSlide || slideAllowJump) {
                     if(isGrounded || isSlopSlide || (mJumpCounter < jumpCounter && (Time.fixedTime - mLastGroundTime < jumpAirDelay || jumpDropAllow || mJumpCounter > 0))) {
                         lockDrag = true;
-                        rigidbody.drag = airDrag;
+                        mBody.drag = airDrag;
 
                         PrepJumpVel();
 
-                        rigidbody.AddForce(dirHolder.up * jumpImpulse, ForceMode.Impulse);
+                        mBody.AddForce(dirHolder.up * jumpImpulse, ForceMode.Impulse);
 
                         mJumpCounter++;
                         mJumpingWall = false;
@@ -286,7 +286,7 @@ public class PlatformerController : RigidBodyController {
 
         //see if we are trying to move the opposite dir
         if(!ret) { //see if we are trying to move the opposite dir
-            Vector3 velDir = rigidbody.velocity.normalized;
+            Vector3 velDir = mBody.velocity.normalized;
             ret = Vector3.Dot(dir, velDir) < moveCosCheck;
         }
 
@@ -379,7 +379,7 @@ public class PlatformerController : RigidBodyController {
                             float yCap = WallStickCurrentDownCap();
                             if(newVel.y < -yCap) newVel.y = -yCap;
 
-                            rigidbody.velocity = dirHolder.rotation * newVel;
+                            mBody.velocity = dirHolder.rotation * newVel;
 
                             mWallStickWaitInput = true;
                         }
@@ -419,7 +419,8 @@ public class PlatformerController : RigidBodyController {
                         float yCap = WallStickCurrentDownCap();
                         if(newVel.y < -yCap) newVel.y = -yCap;
 
-                        rigidbody.velocity = dirHolder.rotation * newVel;
+                        if(!mBody.isKinematic)
+                            mBody.velocity = dirHolder.rotation * newVel;
                     }
                 }
             }
@@ -482,7 +483,6 @@ public class PlatformerController : RigidBodyController {
 
     // Update is called once per frame
     protected override void FixedUpdate() {
-        Rigidbody body = rigidbody;
         Quaternion dirRot = dirHolder.rotation;
 
         if(mInputEnabled) {
@@ -531,7 +531,7 @@ public class PlatformerController : RigidBodyController {
             //jump
             if(mJump && !mWallSticking) {
                 if(isUnderWater) {
-                    body.AddForce(dirRot * Vector3.up * jumpWaterForce);
+                    mBody.AddForce(dirRot * Vector3.up * jumpWaterForce);
                 }
                 else {
                     if(!mJumpInputDown || Time.fixedTime - mJumpLastTime >= jumpDelay || collisionFlags == CollisionFlags.Above) {
@@ -539,7 +539,7 @@ public class PlatformerController : RigidBodyController {
                         lockDrag = false;
                     }
                     else if(localVelocity.y < airMaxSpeed) {
-                        body.AddForce(dirRot * Vector3.up * jumpForce);
+                        mBody.AddForce(dirRot * Vector3.up * jumpForce);
                     }
                 }
             }
@@ -562,7 +562,7 @@ public class PlatformerController : RigidBodyController {
             if(localVelocity.y < -yCap) {
                 //ComputeLocalVelocity();
                 Vector3 newVel = new Vector3(localVelocity.x, -yCap, localVelocity.z);
-                body.velocity = dirHolder.rotation * newVel;
+                mBody.velocity = dirHolder.rotation * newVel;
             }
             //boost up
             else if(localVelocity.y >= 0.0f) {
@@ -572,19 +572,19 @@ public class PlatformerController : RigidBodyController {
                     upDir = M8.MathUtil.Slide(upDir, mWallStickCollInfo.normal);
 
                     if(localVelocity.y < airMaxSpeed)
-                        body.AddForce(upDir * wallStickUpForce);
+                        mBody.AddForce(upDir * wallStickUpForce);
                 }
             }
 
             //push towards the wall
-            body.AddForce(-mWallStickCollInfo.normal * wallStickForce);
+            mBody.AddForce(-mWallStickCollInfo.normal * wallStickForce);
         }
         else if(mCollCount == 0) {
             //check if no collision, then try to dampen horizontal speed
             if(airDampForceX != 0.0f && moveSide == 0.0f) {
                 if(localVelocity.x < -airDampMinSpeedX || localVelocity.x > airDampMinSpeedX) {
                     Vector3 dir = localVelocity.x < 0.0f ? Vector3.right : Vector3.left;
-                    body.AddForce(dirRot * dir * airDampForceX);
+                    mBody.AddForce(dirRot * dir * airDampForceX);
                 }
             }
         }

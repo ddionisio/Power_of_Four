@@ -37,6 +37,7 @@ public class Projectile : EntityBase {
     public bool simple; //don't use rigidbody, make sure you have a sphere collider and set it to trigger
     public LayerMask simpleLayerMask;
     public string[] hitTags;
+    public LayerMask ignoreCollisionMask; //ignore this collision upon contact
     public float startVelocity;
     public float startVelocityAddRand;
     public float force;
@@ -87,7 +88,7 @@ public class Projectile : EntityBase {
     protected Vector3 mActiveForce;
     protected Vector3 mInitDir = Vector3.zero;
     protected Transform mSeek = null;
-    protected Vector3 mCurVelocity; //only use by simple
+    protected Vector3 mCurVelocity;
     protected float mInitialVelocity;
 
     private Damage mDamage;
@@ -143,16 +144,11 @@ public class Projectile : EntityBase {
     public bool spawning { get { return mSpawning; } }
 
     public Vector3 velocity {
-        get {
-            if(simple)
-                return mCurVelocity;
-            return mBody != null ? mBody.velocity : Vector3.zero;
-        }
+        get { return mCurVelocity; }
 
         set {
-            if(simple)
-                mCurVelocity = value;
-            else if(mBody)
+            mCurVelocity = value;
+            if(!simple && mBody)
                 mBody.velocity = value;
         }
     }
@@ -522,13 +518,26 @@ public class Projectile : EntityBase {
     }
 
     void OnCollisionEnter(Collision collision) {
-        foreach(ContactPoint cp in collision.contacts) {
+        int ignoreCount = 0;
+        int contactCount = collision.contacts.Length;
+
+        for(int i = 0; i < contactCount; i++) {
+            ContactPoint cp = collision.contacts[i];
+            if(ignoreCollisionMask != 0 && (ignoreCollisionMask & (1<<cp.otherCollider.gameObject.layer)) != 0) {
+                Physics.IgnoreCollision(collider, cp.otherCollider, true);
+                ignoreCount++;
+                continue;
+            }
+
             mLastHit.col = cp.otherCollider;
             mLastHit.normal = cp.normal;
             mLastHit.point = cp.point;
 
             ProcessContact(cp.otherCollider.gameObject, cp.point, cp.normal);
         }
+
+        if(ignoreCount >= contactCount)
+            mBody.velocity = mCurVelocity;
     }
 
     void OnCollisionStay(Collision collision) {
@@ -673,6 +682,8 @@ public class Projectile : EntityBase {
 
                         if(mActiveForce != Vector3.zero)
                             mBody.AddForce(mActiveForce * mMoveScale);
+
+                        mCurVelocity = mBody.velocity;
                     }
                 }
                 break;
@@ -705,6 +716,8 @@ public class Projectile : EntityBase {
                     }
 
                     mBody.AddForce(mSeekCurDir * force * mMoveScale);
+
+                    mCurVelocity = mBody.velocity;
                 }
                 break;
 
@@ -750,6 +763,8 @@ public class Projectile : EntityBase {
                             Vector3 force = M8.MathUtil.Steer(mBody.velocity, _dir * seekVelocity, seekVelocityCap, 1.0f);
                             mBody.AddForce(force, ForceMode.VelocityChange);
                         }
+
+                        mCurVelocity = mBody.velocity;
                     }
                 }
                 break;

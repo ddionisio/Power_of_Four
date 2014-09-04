@@ -79,6 +79,7 @@ public class Player : EntityBase {
     private bool mUpIsPressed = false;
     private bool mSpawned;
     private TriggerAttacher mAttacher;
+    private CameraAttachPlayer mCamAttach;
 
     private IEnumerator mGroundSetPosAction;
     private Vector3 mGroundLastValidPos;
@@ -147,6 +148,7 @@ public class Player : EntityBase {
                         mUpIsPressed = false;
 
                         lookDir = LookDir.Front;
+                        if(mCamAttach) mCamAttach.lookDir = LookDir.Front;
                     }
                 }
 
@@ -196,14 +198,14 @@ public class Player : EntityBase {
 
         mStats.SaveState();
 
-        PlayerSave.SaveData();
+        UserData.instance.SetInt(savedBuddySelectedKey, mCurBuddyInd);
 
+        PlayerSave.SaveData();
+                
         UserData.instance.Save();
 
         PlayerPrefs.Save();
-
-        UserData.instance.SetInt(savedBuddySelectedKey, mCurBuddyInd);
-
+                
         SceneState.instance.GlobalSnapshotDelete();
         UserData.instance.SnapshotDelete();
 
@@ -271,6 +273,8 @@ public class Player : EntityBase {
                     if(currentBuddy)
                         currentBuddy.FireStart();
                 }
+
+                if(mGroundSetPosAction == null) { StartCoroutine(mGroundSetPosAction = DoGroundSetPos()); }
                 break;
 
             case EntityState.Hurt:
@@ -346,6 +350,7 @@ public class Player : EntityBase {
                 mCtrlAnim.PlayOverrideClip(takeCharge);
 
                 lookDir = lastLookDir;
+                if(mCamAttach) mCamAttach.lookDir = lastLookDir;
 
                 switch(mCurLook) {
                     case LookDir.Up:
@@ -481,8 +486,6 @@ public class Player : EntityBase {
             buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, 0);
         }
         currentBuddyIndex = buddyIndex;
-
-        if(mGroundSetPosAction == null && mCtrl.isGrounded) { StartCoroutine(mGroundSetPosAction = DoGroundSetPos()); }
     }
 
     protected override void SpawnStart() {
@@ -540,6 +543,8 @@ public class Player : EntityBase {
             buddies[i].Init(this, i);
             buddies[i].gameObject.SetActive(false);
         }
+
+        mCamAttach = GetComponent<CameraAttachPlayer>();
     }
 
     // Use this for initialization
@@ -612,11 +617,13 @@ public class Player : EntityBase {
 
             if(inpY < -inputDirThreshold) {
                 lookDir = mCtrl.isGrounded ? LookDir.Front : LookDir.Down;
+                if(mCamAttach) mCamAttach.lookDir = mSliding ? LookDir.Front : LookDir.Down;
 
                 mUpIsPressed = false;
             }
             else if(inpY > inputDirThreshold) {
                 lookDir = LookDir.Up;
+                if(mCamAttach) mCamAttach.lookDir = LookDir.Up;
 
                 //check for pressed
                 if(!mUpIsPressed) {
@@ -626,6 +633,7 @@ public class Player : EntityBase {
             }
             else {
                 lookDir = LookDir.Front;
+                if(mCamAttach) mCamAttach.lookDir = LookDir.Front;
 
                 mUpIsPressed = false;
             }
@@ -884,6 +892,8 @@ public class Player : EntityBase {
 
                 if(slideGOActive) slideGOActive.SetActive(true);
 
+                if(mCamAttach) mCamAttach.lookDir = LookDir.Front;
+
                 //sfxSlide.Play();
             }
             else {
@@ -972,14 +982,15 @@ public class Player : EntityBase {
     }
 
     void OnJump(PlatformerController ctrl) {
-        if(mGroundSetPosAction != null) { StopCoroutine(mGroundSetPosAction); mGroundSetPosAction = null; }
     }
 
     void OnLand(PlatformerController ctrl) {
         if(state != (int)EntityState.Invalid) {
             //effects
 
-            if(mGroundSetPosAction == null) { StartCoroutine(mGroundSetPosAction = DoGroundSetPos()); }
+            RigidBodyController.CollideInfo inf = mCtrl.GetCollideInfo(CollisionFlags.Below);
+            if(inf != null && inf.collider.rigidbody == null)
+                mGroundLastValidPos = transform.position;
         }
     }
 
@@ -1000,20 +1011,18 @@ public class Player : EntityBase {
     }
 
     IEnumerator DoGroundSetPos() {
-        if(state == (int)EntityState.Normal)
-            mGroundLastValidPos = transform.position;
-
         WaitForSeconds wait = new WaitForSeconds(groundSetPosDelay);
-        while(mCtrl.isGrounded) {
-            if(state == (int)EntityState.Normal) {
+        while(state == (int)EntityState.Normal) {
+            if(mCtrl.isGrounded) {
                 //check ground collision and make sure it doesn't have a body
                 RigidBodyController.CollideInfo inf = mCtrl.GetCollideInfo(CollisionFlags.Below);
-                if(inf != null && inf.collider.rigidbody == null) {
+                if(inf != null && inf.collider.rigidbody == null)
                     mGroundLastValidPos = transform.position;
-                }
             }
 
             yield return wait;
         }
+
+        mGroundSetPosAction = null;
     }
 }

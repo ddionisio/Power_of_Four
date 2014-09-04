@@ -17,8 +17,10 @@ public class EyeOrbInsert : MonoBehaviour {
 
     public float eyeDelay = 0.5f;
 
+    private EntityActivator mActivator;
     private AnimatorData mAnim;
     private Transform mEyeOrb;
+    private bool mStarted;
 
     void OnTriggerEnter(Collider col) {
         LevelController lvlCtrl = LevelController.instance;
@@ -27,8 +29,8 @@ public class EyeOrbInsert : MonoBehaviour {
             //valid eye orb, grab it and place
             EyeOrbPlayer.OrbData dat = EyeOrbPlayer.instance.Remove();
             if(dat.index != -1) {
-                lvlCtrl.eyeOrbSetState(dat.index, LevelController.EyeOrbState.Placed);
-                lvlCtrl.eyeInsertSetFilled(index, true);
+                lvlCtrl.eyeOrbSetState(dat.index, LevelController.EyeOrbState.Placed, true);
+                lvlCtrl.eyeInsertSetFilled(index, true, true);
 
                 mEyeOrb = dat.orbT;
                 if(mEyeOrb)
@@ -43,16 +45,27 @@ public class EyeOrbInsert : MonoBehaviour {
             }
         }
     }
-
+    
     void Awake() {
         mAnim = GetComponent<AnimatorData>();
+
+        mActivator = GetComponentInChildren<EntityActivator>();
+        if(mActivator)
+            mActivator.awakeCallback += OnActivatorAwake;
     }
 
     void Start() {
-        //see if we are already inserted
-        if(LevelController.instance.eyeInsertIsFilled(index)) {
-            if(mAnim)
-                mAnim.Play(takeActive);
+        mStarted = true;
+        OnActivatorAwake();
+    }
+
+    void OnActivatorAwake() {
+        if(mStarted) {
+            //see if we are already inserted
+            if(LevelController.instance.eyeInsertIsFilled(index)) {
+                if(mAnim)
+                    mAnim.Play(takeActive);
+            }
         }
     }
 
