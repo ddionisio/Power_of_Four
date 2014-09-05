@@ -41,15 +41,19 @@ public class TriggerAttacher : MonoBehaviour {
 
     void OnTriggerEnter(Collider col) {
         if(mAlive && mJoint == null) {
-            col.transform.position = collider.bounds.center;
+            //first check if collider has another joint belonging to another attacher
+            Joint otherJoint = col.gameObject.GetComponent<Joint>();
+            if(!(otherJoint && otherJoint.connectedBody.GetComponentInChildren<TriggerAttacher>())) {
+                col.transform.position = collider.bounds.center;
 
-            mJoint = col.gameObject.AddComponent<FixedJoint>();
-            mJoint.connectedBody = targetBody.rigidbody;
+                mJoint = col.gameObject.AddComponent<FixedJoint>();
+                mJoint.connectedBody = targetBody.rigidbody;
 
-            seeker.alive = false;
-            if(mGrav) mGrav.enabled = false;
-                        
-            col.SendMessage("OnTriggerAttacherAttach", this);
+                seeker.alive = false;
+                if(mGrav) mGrav.enabled = false;
+
+                col.SendMessage("OnTriggerAttacherAttach", this);
+            }
         }
     }
 

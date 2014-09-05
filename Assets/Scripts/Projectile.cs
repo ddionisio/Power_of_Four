@@ -106,6 +106,9 @@ public class Projectile : EntityBase {
 
     private IEnumerator mDecayAction;
 
+    private float mDefaultStartVelocity;
+    private float mDefaultForce;
+
     //private Vector2 mOscillateDir;
     //private bool mOscillateSwitch;
 
@@ -180,6 +183,8 @@ public class Projectile : EntityBase {
 
         mSphereColl = collider ? collider as SphereCollider : null;
 
+        mDefaultStartVelocity = startVelocity;
+        mDefaultForce = force;
         mDefaultSpeedLimit = speedLimit;
 
         mBody = rigidbody;
@@ -310,6 +315,9 @@ public class Projectile : EntityBase {
             case State.Invalid:
                 CancelInvoke();
                 RevertSpeedLimit();
+
+                startVelocity = mDefaultStartVelocity;
+                force = mDefaultForce;
 
                 PhysicsDisable();
 
@@ -518,22 +526,30 @@ public class Projectile : EntityBase {
     }
 
     void OnCollisionEnter(Collision collision) {
+        if(!collider.enabled || !gameObject.activeInHierarchy)
+            return;
+
         int ignoreCount = 0;
         int contactCount = collision.contacts.Length;
 
         for(int i = 0; i < contactCount; i++) {
             ContactPoint cp = collision.contacts[i];
-            if(ignoreCollisionMask != 0 && (ignoreCollisionMask & (1<<cp.otherCollider.gameObject.layer)) != 0) {
-                Physics.IgnoreCollision(collider, cp.otherCollider, true);
-                ignoreCount++;
-                continue;
+            if(cp.otherCollider.enabled) {
+                GameObject otherGO = cp.otherCollider.gameObject;
+                if(otherGO.activeInHierarchy) {
+                    if(ignoreCollisionMask != 0 && (ignoreCollisionMask & (1<<otherGO.layer)) != 0) {
+                        Physics.IgnoreCollision(collider, cp.otherCollider, true);
+                        ignoreCount++;
+                        continue;
+                    }
+
+                    mLastHit.col = cp.otherCollider;
+                    mLastHit.normal = cp.normal;
+                    mLastHit.point = cp.point;
+
+                    ProcessContact(cp.otherCollider.gameObject, cp.point, cp.normal);
+                }
             }
-
-            mLastHit.col = cp.otherCollider;
-            mLastHit.normal = cp.normal;
-            mLastHit.point = cp.point;
-
-            ProcessContact(cp.otherCollider.gameObject, cp.point, cp.normal);
         }
 
         if(ignoreCount >= contactCount)

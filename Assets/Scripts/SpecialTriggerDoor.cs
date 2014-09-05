@@ -3,9 +3,10 @@ using System.Collections;
 
 public class SpecialTriggerDoor : SpecialTrigger {
     public string toScene;
-    public string toSceneSpawnPoint; //which start point to spawn player to
+    public string spawnPoint; //which start point to spawn player to
     public bool save; //act as a checkpoint, save player stats and set the saved level/spawn point
     public bool saveSpawnPoint;
+    public bool saveToCurrentScene; //if true, saves to current scene instead of toScene
 
     public bool startClosed = false;
 
@@ -37,7 +38,7 @@ public class SpecialTriggerDoor : SpecialTrigger {
         //save states and stuff then enter scene
         if(!string.IsNullOrEmpty(toScene)) {
             if(save) {
-                LevelController.SetSavedLevel(toScene, saveSpawnPoint ? toSceneSpawnPoint : "");
+                LevelController.SetSavedLevel(saveToCurrentScene ? Application.loadedLevelName : toScene, saveSpawnPoint ? spawnPoint : "");
                 Player.instance.Save();
             }
 
@@ -48,7 +49,7 @@ public class SpecialTriggerDoor : SpecialTrigger {
             SceneState.instance.SetGlobalValueFloat(PlayerStats.currentHPKey, Player.instance.stats.curHP, false);
 
             if(LevelController.instance)
-                LevelController.instance.LoadScene(toScene, toSceneSpawnPoint);
+                LevelController.instance.LoadScene(toScene, spawnPoint);
             else
                 SceneManager.instance.LoadScene(toScene);
         }

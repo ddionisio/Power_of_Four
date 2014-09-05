@@ -17,6 +17,9 @@ public class ProjectileSpawner : MonoBehaviour {
     public float restartDelay;
     public float angleRandRange;
 
+    public bool isOverrideSpeed;
+    public float overrideSpeed;
+
     public bool seekPlayer;
     public float seekActiveAngleLimit = 360.0f; //limit of start dir against dir towards seek
 
@@ -141,6 +144,9 @@ public class ProjectileSpawner : MonoBehaviour {
                     if(proj) {
                         proj.releaseCallback += OnProjRelease;
                         mCurCount++;
+
+                        if(isOverrideSpeed)
+                            proj.startVelocity = overrideSpeed;
 
                         if(fireParticle)
                             fireParticle.Play();

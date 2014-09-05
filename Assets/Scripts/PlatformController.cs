@@ -19,6 +19,7 @@ public class PlatformController : MonoBehaviour {
     }
 
     public Dir dir = Dir.Up;
+    public bool dirIsLocal = true;
     public float ofs = 0.15f;
 
     public bool upDirLimitEnabled = false; //check collider's up dir angle from this platform's dir
@@ -155,7 +156,7 @@ public class PlatformController : MonoBehaviour {
         Vector3 vel = rigidbody.velocity;// GetPointVelocity(hit.point);
 
         if(vel != Vector3.zero || rigidbody.angularVelocity != Vector3.zero) {
-            Vector3 wDir = transform.rotation * mDir;
+            Vector3 wDir = dirIsLocal ? transform.rotation * mDir : mDir;
 
             if(!useTrigger) {
                 mColls.Clear();
