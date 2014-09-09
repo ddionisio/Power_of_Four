@@ -66,7 +66,7 @@ public class BuddyRock : Buddy {
 
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
-        while(Time.fixedTime - mLastFireTime < fireRate)
+        while(Time.fixedTime - mLastFireTime < currentFireRate)
             yield return wait;
 
         mAnim.Play(mTakeEnter);

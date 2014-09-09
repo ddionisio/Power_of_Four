@@ -287,7 +287,7 @@ public class BuddyWater : Buddy {
 
     IEnumerator DoActivate() {
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
-        while(Time.fixedTime - mLastFireTime < fireRate)
+        while(Time.fixedTime - mLastFireTime < currentFireRate)
             yield return wait;
 
         ApplyActive();
@@ -341,7 +341,7 @@ public class BuddyWater : Buddy {
     /// Returns true if activated
     /// </summary>
     bool ApplyActive() {
-        bool yes = Time.fixedTime - mLastFireTime >= fireRate;
+        bool yes = Time.fixedTime - mLastFireTime >= currentFireRate;
         if(yes) {
             bodySpriteRender.sprite = bodyActiveSprite;
             activeGO.SetActive(true);

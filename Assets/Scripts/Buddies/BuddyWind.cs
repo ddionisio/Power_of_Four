@@ -115,7 +115,7 @@ public class BuddyWind : Buddy {
     }
 
     void ApplyFireActive() {
-        if(Time.fixedTime - mLastFireTime < fireRate || !canFire) {
+        if(Time.fixedTime - mLastFireTime < currentFireRate || !canFire) {
             if(mFireReadyAction == null)
                 StartCoroutine(mFireReadyAction = DoFireSpinnerActive());
         }
@@ -127,7 +127,7 @@ public class BuddyWind : Buddy {
         readyAnim.gameObject.SetActive(false);
 
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
-        while(Time.fixedTime - mLastFireTime < fireRate || !canFire)
+        while(Time.fixedTime - mLastFireTime < currentFireRate || !canFire)
             yield return wait;
 
         readyAnim.gameObject.SetActive(true);

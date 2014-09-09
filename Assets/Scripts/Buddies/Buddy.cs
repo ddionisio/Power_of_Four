@@ -12,7 +12,8 @@ public abstract class Buddy : MonoBehaviour {
 
     public delegate void Callback(Buddy bud);
 
-    public float fireRate;
+    [SerializeField]
+    float fireRate;
 
     [SerializeField]
     protected Transform projPoint;
@@ -57,6 +58,8 @@ public abstract class Buddy : MonoBehaviour {
     public int index { get { return mInd; } }
 
     public virtual Player.LookDir dir { get { return Player.instance ? Player.instance.lookDir : Player.LookDir.Invalid; } }
+
+    public virtual float currentFireRate { get { return fireRate; } }
 
     public Vector3 firePos {
         get {
@@ -194,7 +197,7 @@ public abstract class Buddy : MonoBehaviour {
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
         while(true) {
-            if(Time.fixedTime - mLastFireTime >= fireRate && canFire) {
+            if(Time.fixedTime - mLastFireTime >= currentFireRate && canFire) {
                 mLastFireTime = Time.fixedTime;
                 OnFire();
             }

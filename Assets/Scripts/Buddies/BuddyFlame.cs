@@ -5,6 +5,7 @@ public class BuddyFlame : Buddy {
     [System.Serializable]
     public class ProjData {
         public string type;
+        public float fireRate;
         public float angleRange;
         public Vector2 speedRange;
         public Vector2 decayRange;
@@ -72,6 +73,8 @@ public class BuddyFlame : Buddy {
     private IEnumerator mChargeAction;
     private bool mChargeIsActive;
 
+    public override float currentFireRate { get { return projs[Mathf.Clamp(level - 1, 0, projs.Length - 1)].fireRate; } }
+
     protected override void OnInit() {
         mFingerTakeIdle = fingerAnim.GetTakeIndex(fingerTakeIdle);
         mFingerTakeMove = fingerAnim.GetTakeIndex(fingerTakeMove);
@@ -135,8 +138,7 @@ public class BuddyFlame : Buddy {
             ChargeActive(false);
         }
         else {
-            int projInd = level < 3 ? level - 1 : projs.Length - 1;
-            projs[projInd].Fire(firePos, fireDirWorld);
+            projs[Mathf.Clamp(level - 1, 0, projs.Length - 1)].Fire(firePos, fireDirWorld);
         }
     }
 

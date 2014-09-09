@@ -112,6 +112,12 @@ public class ItemPickUp : EntityBase {
                 if(savePickUp)
                     LevelController.instance.PickUpBitSet(savePickUpBit, true);
 
+                if(type == ItemType.DNA) {
+                    Player.instance.stats.SaveDNAState();
+                    if(!savePickUp)
+                        Player.instance.stats.DNAPickup += value;
+                }
+
                 if(collider)
                     collider.enabled = false;
 

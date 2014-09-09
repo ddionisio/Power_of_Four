@@ -3,6 +3,9 @@ using System.Collections;
 
 public class PlayerStats : Stats {
     public const string currentHPKey = "chp";
+    
+    //preserve keys
+    const string DNAPickupKey = "dnapk";
 
     public const int initialHeartCount = 4;
     public const float HitPerHeart = 2.0f;
@@ -65,9 +68,29 @@ public class PlayerStats : Stats {
         }
     }
 
+    public int DNAPickup {
+        get { return UserData.instance.GetInt(DNAPickupKey); }
+        set { UserData.instance.SetInt(DNAPickupKey, value); UserData.instance.SnapshotPreserve(DNAPickupKey); }
+    }
+
+    public void RevertDNAPickup() {
+        mDNA -= DNAPickup;
+        SaveDNAState();
+        ClearDNAPickup();
+    }
+
+    public void ClearDNAPickup() {
+        UserData.instance.Delete(DNAPickupKey);
+    }
+
+    public void SaveDNAState() {
+        UserData.instance.SetInt("dna", mDNA);
+        UserData.instance.SnapshotPreserve("dna");
+    }
+
     public void SaveState() {
         UserData.instance.SetInt("hrc", mHeartReserveCur);
-        UserData.instance.SetInt("dna", mDNA);
+        SaveDNAState();
     }
 
     public void LoadState() {

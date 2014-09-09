@@ -4,9 +4,11 @@ using System.Collections;
 public class Player : EntityBase {
     public const string savedBuddySelectedKey = "sb";
     public const string lastBuddySelectedKey = "lb"; //when going to the next level, stored in SceneState global
+    public const string saveOnLevelLoadKey = "soll";
 
     public const string takeHurt = "hurt";
     public const string takeCharge = "charge";
+    public const string takeDie = "die";
 
     public const float inputDirThreshold = 0.5f;
 
@@ -23,9 +25,7 @@ public class Player : EntityBase {
     public bool startLocked;
 
     public float hurtForce = 15.0f;
-    public float hurtDelay = 0.5f; //how long the hurt state lasts
     public float hurtInvulDelay = 0.5f;
-    public float deathFinishDelay = 2.0f;
     public float slideForce;
     public float slideSpeedMax;
     public float slideDelay;
@@ -48,6 +48,7 @@ public class Player : EntityBase {
     public float attacherDetachImpulse;
 
     public float groundSetPosDelay = 1.0f;
+    public LayerMask groundSetPosMask;
 
     public event BuddyCallback buddyUnlockCallback;
     public event Callback buddyChangedCallback;
@@ -197,6 +198,7 @@ public class Player : EntityBase {
         LevelController.instance.Save();
 
         mStats.SaveState();
+        mStats.ClearDNAPickup();
 
         UserData.instance.SetInt(savedBuddySelectedKey, mCurBuddyInd);
 
@@ -212,6 +214,16 @@ public class Player : EntityBase {
         //show pop-up if available
     }
 
+    /// <summary>
+    /// This will revert all global saved data, game will be saved upon loading.
+    /// </summary>
+    public void SaveRevertData() {
+        SceneState.instance.GlobalSnapshotRestore();
+        UserData.instance.SnapshotRestore();
+        mStats.RevertDNAPickup();
+        UserData.instance.SetInt(saveOnLevelLoadKey, 1);
+    }
+
     public void UnlockBuddy(int budInd) {
         buddies[budInd].level = 1;
 
@@ -224,6 +236,9 @@ public class Player : EntityBase {
 
     public void WarpToLastGroundPosition() {
         transform.position = mGroundLastValidPos;
+        mCtrl.ResetCollision();
+        if(!rigidbody.isKinematic)
+            rigidbody.velocity = Vector3.zero;
     }
 
     protected override void StateChanged() {
@@ -289,7 +304,7 @@ public class Player : EntityBase {
                     inputEnabled = false;
 
                     //push slightly
-                    StartCoroutine(DoHurtForce(mStats.lastDamageNormal));
+                    //StartCoroutine(DoHurtForce(mStats.lastDamageNormal));
 
                     //hurt delay
                     StartCoroutine(DoHurt());
@@ -301,8 +316,7 @@ public class Player : EntityBase {
             case EntityState.Dead:
                 UIModalManager.instance.ModalCloseAll();
 
-                if(currentBuddy)
-                    currentBuddy.FireStop();
+                currentBuddyIndex = -1;
 
                 SetSlide(false);
 
@@ -562,6 +576,18 @@ public class Player : EntityBase {
         if(cameraPointStartAttached) {
             CameraController.instance.attach = GetComponent<CameraAttach>();
         }
+
+        if(UserData.instance.GetInt(saveOnLevelLoadKey) == 1) {
+            UserData.instance.Delete(saveOnLevelLoadKey);
+
+            int savedBuddyInd = UserData.instance.GetInt(savedBuddySelectedKey, 0);
+            Save();
+            UserData.instance.SetInt(savedBuddySelectedKey, savedBuddyInd);
+        }
+
+        //for later use when restarting level
+        SceneState.instance.GlobalSnapshotSave();
+        UserData.instance.SnapshotSave();
     }
 
     void OnTriggerEnter(Collider col) {
@@ -834,12 +860,14 @@ public class Player : EntityBase {
 
     IEnumerator DoHurt() {
         //hurtin'
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
         mCtrlAnim.PlayOverrideClip(takeHurt);
-
-        yield return new WaitForSeconds(hurtDelay);
-
+        while(mCtrlAnim.overrideTakeName == takeHurt && mCtrlAnim.overrideIsPlaying)
+            yield return wait;
         if(mCtrlAnim.overrideTakeName == takeHurt)
             mCtrlAnim.StopOverrideClip();
+
+        mCtrl.ResetCollision();
 
         //done hurtin'
         if(state == (int)EntityState.Hurt)
@@ -971,10 +999,14 @@ public class Player : EntityBase {
     }
 
     IEnumerator DoDeathFinishDelay() {
-        yield return new WaitForSeconds(deathFinishDelay);
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
-        SceneState.instance.GlobalSnapshotRestore();
-        UserData.instance.SnapshotRestore();
+        mCtrlAnim.PlayOverrideClip(takeDie);
+        while(mCtrlAnim.overrideIsPlaying)
+            yield return wait;
+        mCtrlAnim.StopOverrideClip();
+
+        SaveRevertData();
         SceneManager.instance.Reload();
     }
 
@@ -987,10 +1019,7 @@ public class Player : EntityBase {
     void OnLand(PlatformerController ctrl) {
         if(state != (int)EntityState.Invalid) {
             //effects
-
-            RigidBodyController.CollideInfo inf = mCtrl.GetCollideInfo(CollisionFlags.Below);
-            if(inf != null && inf.collider.rigidbody == null)
-                mGroundLastValidPos = transform.position;
+            ApplyGroundSetPos();
         }
     }
 
@@ -1010,16 +1039,31 @@ public class Player : EntityBase {
         mAttacher = attacher;
     }
 
+    void ApplyGroundSetPos() {
+        if(state == (int)EntityState.Normal && mCtrl.isGrounded && !mCtrl.isSlopSlide && !mSliding && !mBlinker.isBlinking) {
+            //check ground collision and make sure it doesn't have a body
+            Transform d = mCtrl.dirHolder;
+            CapsuleCollider coll = mCtrl.capsuleCollider;
+            Bounds b = coll.bounds;
+            RaycastHit hit, hit2;
+            Vector3 ofs = d.right*(coll.radius + 0.1f);
+            if(Physics.Raycast(b.center - ofs, -d.up, out hit, coll.height*0.5f + 0.001f, groundSetPosMask)
+                    && Physics.Raycast(b.center + ofs, -d.up, out hit2, coll.height*0.5f + 0.001f, groundSetPosMask)) {
+                if(hit.collider.attachedRigidbody == null && hit2.collider.attachedRigidbody == null) {
+                    // Debug.Log("ground set pos: "+transform.position);
+                    mGroundLastValidPos = transform.position;
+                }
+            }
+            /*RigidBodyController.CollideInfo inf = mCtrl.GetCollideInfo(CollisionFlags.Below);
+            if(inf != null && inf.collider.rigidbody == null)
+                mGroundLastValidPos = transform.position;*/
+        }
+    }
+
     IEnumerator DoGroundSetPos() {
         WaitForSeconds wait = new WaitForSeconds(groundSetPosDelay);
-        while(state == (int)EntityState.Normal) {
-            if(mCtrl.isGrounded) {
-                //check ground collision and make sure it doesn't have a body
-                RigidBodyController.CollideInfo inf = mCtrl.GetCollideInfo(CollisionFlags.Below);
-                if(inf != null && inf.collider.rigidbody == null)
-                    mGroundLastValidPos = transform.position;
-            }
-
+        while(state != (int)EntityState.Invalid) {
+            ApplyGroundSetPos();
             yield return wait;
         }
 

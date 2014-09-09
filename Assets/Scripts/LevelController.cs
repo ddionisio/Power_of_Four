@@ -24,7 +24,7 @@ public class LevelController : MonoBehaviour {
     //used when entering new level, not persistent
     const string spawnPointLevelNameKey = "splvlName";
     const string spawnPointNameKey = "spName";
-
+    
     public string mainLevel; //should be the name of the main level, even if this stage is a sub of a sub
 
     public bool sceneTransOverride;
@@ -277,10 +277,6 @@ public class LevelController : MonoBehaviour {
 
         //add eye orbs to player based on state
         StartCoroutine(DoAddPlayerEyeOrbs());
-
-        //for later use when restarting level
-        SceneState.instance.GlobalSnapshotSave();
-        UserData.instance.SnapshotSave();
     }
 
     void LoadMainLevelStates() {
@@ -321,7 +317,9 @@ public class LevelController : MonoBehaviour {
         UserData.instance.SetInt(levelName+"_se", eyeStates);
         UserData.instance.SetInt(levelName+"_sei", eyeInserts);
 
-        UserData.instance.SetInt(Application.loadedLevelName+"_pb", mPickUpBits);
+        string pickUpKey = Application.loadedLevelName+"_pb";
+        UserData.instance.SetInt(pickUpKey, mPickUpBits);
+        UserData.instance.SnapshotPreserve(pickUpKey);
     }
 
     void OnPlayerSpawn(EntityBase ent) {

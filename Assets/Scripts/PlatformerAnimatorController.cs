@@ -134,10 +134,10 @@ public class PlatformerAnimatorController : MonoBehaviour {
         if(!string.IsNullOrEmpty(mOverrideTakeName)) {
             mOverrideTakeName = "";
 
+            anim.Stop();
+
             if(overrideSetCallback != null)
                 overrideSetCallback(this);
-
-            anim.Stop();
         }
     }
 
