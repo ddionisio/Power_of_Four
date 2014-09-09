@@ -199,8 +199,6 @@ public class LevelController : MonoBehaviour {
                             mBossDoor.interactive = true;
                             mBossDoor.Open();
                         }
-
-                        if(save) Player.instance.Save();
                     }
                 }
             }

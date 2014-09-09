@@ -207,9 +207,9 @@ public class Player : EntityBase {
         UserData.instance.Save();
 
         PlayerPrefs.Save();
-                
-        SceneState.instance.GlobalSnapshotDelete();
-        UserData.instance.SnapshotDelete();
+
+        SceneState.instance.GlobalSnapshotSave();
+        UserData.instance.SnapshotSave();
 
         //show pop-up if available
     }
