@@ -12,9 +12,11 @@ public abstract class Buddy : MonoBehaviour {
 
     public delegate void Callback(Buddy bud);
 
+    public bool headClosed = false; //for player head
+
     [SerializeField]
     float fireRate;
-
+        
     [SerializeField]
     protected Transform projPoint;
 
@@ -63,7 +65,7 @@ public abstract class Buddy : MonoBehaviour {
 
     public Vector3 firePos {
         get {
-            Vector3 ret = projPoint.position; ret.z = 0.0f;
+            Vector3 ret = projPoint ? projPoint.position : transform.position; ret.z = 0.0f;
             return ret;
         }
     }

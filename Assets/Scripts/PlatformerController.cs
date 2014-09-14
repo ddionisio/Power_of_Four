@@ -679,7 +679,7 @@ public class PlatformerController : RigidBodyController {
             Vector3 vel = mBody.velocity;
             float speed = vel.magnitude;
             if(speed > 0) {
-                RaycastHit[] hits = CheckAllCasts(Vector3.zero, 0.00f, vel/speed, speed*Time.fixedDeltaTime, plankLayer);
+                RaycastHit[] hits = CheckAllCasts(Vector3.zero, 0.01f, vel/speed, speed*Time.fixedDeltaTime, plankLayer);
 
                 //check if colliders are not in list
                 for(int i = 0; i < mPlankCount; i++) {

@@ -499,7 +499,7 @@ public class Player : EntityBase {
         else {
             buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, 0);
         }
-        currentBuddyIndex = buddyIndex;
+        currentBuddyIndex = 0;//buddyIndex;
     }
 
     protected override void SpawnStart() {

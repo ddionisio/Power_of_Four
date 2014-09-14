@@ -1,8 +1,8 @@
 fileFormatVersion: 2
-guid: 2bfc3dc0f01029648ad45cdde7094f04
+guid: cbd55aea8f8df8b4a8e4f8dc7256c497
 TextureImporter:
   fileIDToRecycleName:
-    21300000: fireball_base
+    21300000: hookReticle
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -44,5 +44,5 @@ TextureImporter:
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-  spritePackingTag: Temp
+  spritePackingTag: Player
   userData: 

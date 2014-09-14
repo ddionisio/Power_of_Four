@@ -26,8 +26,6 @@ public class HeadAnimController : MonoBehaviour {
     public AnimatorData eyesAnim;
 
     private AnimatorData mAnim;
-    private HeadState mCurHeadState = HeadState.Open;
-
     private IEnumerator mEyesIdleAction;
 
     private int mEyeTakeUp;
@@ -37,9 +35,11 @@ public class HeadAnimController : MonoBehaviour {
 
     public Frame frame {
         get {
+            Buddy bud = Player.instance ? Player.instance.currentBuddy : null;
+
             Frame ret = Frame.Invalid;
             if(sprite) {
-                Sprite[] refs = mCurHeadState == HeadState.Close ? closeFrames : openFrames;
+                Sprite[] refs = bud == null || bud.headClosed ? closeFrames : openFrames;
                 if(refs != null) {
                     for(int i = 0; i < refs.Length; i++) {
                         if(refs[i] == sprite.sprite) {
@@ -52,8 +52,11 @@ public class HeadAnimController : MonoBehaviour {
             return ret;
         }
         set {
+            Player p = Player.instance;
+            Buddy bud = p ? p.currentBuddy : null;
+
             if(Application.isPlaying) {
-                if(Player.instance && mAnim.isPlaying && Player.instance.controller.moveSide == 0.0f && Player.instance.controller.isGrounded)
+                if(p && mAnim.isPlaying && p.controller.moveSide == 0.0f && p.controller.isGrounded)
                     return;
 
                 if(mAnim.isPlaying)
@@ -62,7 +65,7 @@ public class HeadAnimController : MonoBehaviour {
 
             if(sprite) {
                 int ind = (int)value;
-                Sprite[] refs = mCurHeadState == HeadState.Close ? closeFrames : openFrames;
+                Sprite[] refs = Application.isPlaying && (bud == null || bud.headClosed) ? closeFrames : openFrames;
                 if(refs != null) {
                     sprite.sprite = refs[ind >= 0 && ind < refs.Length ? ind : 0];
                 }
@@ -71,8 +74,10 @@ public class HeadAnimController : MonoBehaviour {
     }
 
     public void Blink() {
-        if(Player.instance.controller.isGrounded && Player.instance.controller.moveSide == 0.0f)
-            mAnim.Play(mCurHeadState == HeadState.Close ? "close_blink" : "open_blink");
+        Player p = Player.instance;
+        Buddy bud = p.currentBuddy;
+        if(p.controller.isGrounded && p.controller.moveSide == 0.0f)
+            mAnim.Play(bud == null || bud.headClosed ? "close_blink" : "open_blink");
     }
 
     void OnDisable() {
@@ -122,7 +127,6 @@ public class HeadAnimController : MonoBehaviour {
 
     void OnBuddyChange(Player player) {
         Frame lastFrame = frame;
-        mCurHeadState = player.currentBuddyIndex == -1 ? HeadState.Close : HeadState.Open;
         mAnim.Stop();
         frame = lastFrame;
     }
