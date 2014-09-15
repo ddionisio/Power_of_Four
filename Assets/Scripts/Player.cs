@@ -296,7 +296,7 @@ public class Player : EntityBase {
                 mBlinker.Blink(hurtInvulDelay);
 
                 if(currentBuddy)
-                    currentBuddy.FireStop();
+                    currentBuddy.FireClear();
 
                 //attempt to end sliding
                 SetSlide(false);
@@ -346,7 +346,7 @@ public class Player : EntityBase {
                 UIModalManager.instance.ModalCloseAll();
 
                 if(currentBuddy)
-                    currentBuddy.FireStop();
+                    currentBuddy.FireClear();
 
                 if(mCurActionIconInd != -1)
                     mActionIcons[mCurActionIconInd].SetActive(false);
@@ -383,7 +383,7 @@ public class Player : EntityBase {
                 UIModalManager.instance.ModalCloseAll();
 
                 if(currentBuddy)
-                    currentBuddy.FireStop();
+                    currentBuddy.FireClear();
 
                 currentBuddyIndex = -1;
                 LockControls();
@@ -394,7 +394,7 @@ public class Player : EntityBase {
                 UIModalManager.instance.ModalCloseAll();
 
                 if(currentBuddy)
-                    currentBuddy.FireStop();
+                    currentBuddy.FireClear();
 
                 currentBuddyIndex = -1;
                 LockControls();
@@ -406,7 +406,7 @@ public class Player : EntityBase {
                 UIModalManager.instance.ModalCloseAll();
 
                 if(currentBuddy)
-                    currentBuddy.FireStop();
+                    currentBuddy.FireClear();
 
                 currentBuddyIndex = -1;
                 LockControls();
@@ -491,7 +491,7 @@ public class Player : EntityBase {
         }
 
         //set buddy selected
-        int buddyIndex;
+        /*int buddyIndex;
         if(SceneState.instance.HasGlobalValue(lastBuddySelectedKey)) {
             buddyIndex = SceneState.instance.GetGlobalValue(lastBuddySelectedKey, 0);
             SceneState.instance.DeleteGlobalValue(lastBuddySelectedKey, false);
@@ -499,7 +499,9 @@ public class Player : EntityBase {
         else {
             buddyIndex = UserData.instance.GetInt(savedBuddySelectedKey, 0);
         }
-        currentBuddyIndex = 0;//buddyIndex;
+        currentBuddyIndex = buddyIndex;*/
+
+        currentBuddyIndex = 0;
     }
 
     protected override void SpawnStart() {
@@ -804,7 +806,7 @@ public class Player : EntityBase {
     void UpPressed() {
         if(mSpecialTrigger) {
             if(currentBuddy)
-                currentBuddy.FireStop();
+                currentBuddy.FireClear();
 
             if(mSpecialTrigger && mSpecialTrigger.enabled && !mSpecialTrigger.isActing && mSpecialTrigger.interactive)
                 mSpecialTrigger.Action(OnSpecialTriggerActFinish);

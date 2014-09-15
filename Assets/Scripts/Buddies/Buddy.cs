@@ -16,6 +16,9 @@ public abstract class Buddy : MonoBehaviour {
 
     [SerializeField]
     float fireRate;
+
+    [SerializeField]
+    bool isFirePress; //player has to press again to fire
         
     [SerializeField]
     protected Transform projPoint;
@@ -138,15 +141,31 @@ public abstract class Buddy : MonoBehaviour {
 
     public void FireStart() {
         if(!mIsFiring && gameObject.activeSelf) {
-            mIsFiring = true;
-
             //cancel other actions
             if(mCurAct != null) { StopCoroutine(mCurAct); mCurAct = null; }
+                        
+            if(isFirePress) {
+                if(canFire) {
+                    mIsFiring = true;
 
-            OnFireStart();
+                    OnFireStart();
 
-            //start
-            StartCoroutine(mCurAct = DoFiring());
+                    mLastFireTime = Time.fixedTime;
+                    OnFire();
+
+                    OnFireStop();
+
+                    FireStop();
+                }
+            }
+            else {
+                mIsFiring = true;
+
+                OnFireStart();
+
+                //start
+                StartCoroutine(mCurAct = DoFiring());
+            }
         }
     }
 
@@ -161,6 +180,14 @@ public abstract class Buddy : MonoBehaviour {
 
             OnFireStop();
         }
+    }
+
+    /// <summary>
+    /// Force stop firing, special case for some buddies
+    /// </summary>
+    public void FireClear() {
+        FireStop();
+        OnFireClear();
     }
 
     public void Init(Player player, int index) {
@@ -278,4 +305,6 @@ public abstract class Buddy : MonoBehaviour {
     /// Called when we stop firing
     /// </summary>
     protected virtual void OnFireStop() { }
+
+    protected virtual void OnFireClear() { }
 }
