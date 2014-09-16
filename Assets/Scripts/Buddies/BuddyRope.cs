@@ -17,6 +17,9 @@ public class BuddyRope : Buddy {
     public Transform hook;
     public Transform cursor;
 
+    public float aimAngleSpeed = 30.0f;
+    public float aimMidAirAngleMax = 30.0f;
+
     public Rigidbody attachPointBody;
     public float attachPlayerDrag = 0.015f; //player's drag when attached
 
@@ -56,6 +59,9 @@ public class BuddyRope : Buddy {
     private FixedJoint mPlayerJoint;
 
     private Material mIndicatorMat;
+
+    private float mAimAngle = 90.0f; //based on player's gravity up vector
+    private Vector3 mAimNextDir;
     
     public override bool canFire {
         get {
@@ -132,6 +138,7 @@ public class BuddyRope : Buddy {
             case State.AttachedEntity:
                 if(mAction != null) { StopCoroutine(mAction); mAction = null; }
                 Detach();
+                mAimAngle = Vector3.Angle(Player.instance.controller.gravityController.up, mAimNextDir);
                 StartCoroutine(mAction = DoCursorUpdate());
                 break;
         }
@@ -198,20 +205,14 @@ public class BuddyRope : Buddy {
         mIndicatorMat.color = isValid ? indicatorColorValid : indicatorColorInvalid;
     }
 
-    Vector3 GetCurrentDir() {
+    Vector3 GetCurrentDir(float dt) {
         InputManager input = InputManager.instance;
         Player player = Player.instance;
 
         //determine dir
-        Vector3 dir = new Vector3(input.GetAxis(0, InputAction.MoveX), Mathf.Max(0.0f, input.GetAxis(0, InputAction.MoveY)));
-        if(dir != Vector3.zero && !player.controller.isWallStick) {
-            dir = player.controller.dirHolder.rotation*dir;
-            dir.Normalize();
-        }
-        else {
-            dir = player.controllerAnim.isLeft ? -player.controller.dirHolder.right : player.controller.dirHolder.right;
-        }
-        return dir;
+        mAimAngle = Mathf.Clamp(mAimAngle - aimAngleSpeed*dt*input.GetAxis(0, InputAction.MoveY), 0.0f, 90.0f);
+
+        return Quaternion.Euler(0f, 0f, player.isLeft ? mAimAngle : -mAimAngle)*player.controller.gravityController.up;
     }
 
     IEnumerator DoFire() {
@@ -230,7 +231,7 @@ public class BuddyRope : Buddy {
 
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
-        Vector3 dir = GetCurrentDir();
+        Vector3 dir = GetCurrentDir(0);
         if(dir == Vector3.zero)
             dir = Player.instance.controllerAnim.isLeft ? -Player.instance.controller.dirHolder.right : Player.instance.controller.dirHolder.right;
         
@@ -287,13 +288,11 @@ public class BuddyRope : Buddy {
         indicator.gameObject.SetActive(true);
 
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
-        Vector3 dir = Player.instance.controllerAnim.isLeft ? -Player.instance.controller.dirHolder.right : Player.instance.controller.dirHolder.right;
+
         while(true) {
             Vector3 basePt = firePos;
 
-            Vector3 nDir = GetCurrentDir();
-            if(nDir != Vector3.zero)
-                dir = nDir;
+            Vector3 dir = GetCurrentDir(Time.fixedDeltaTime);
 
             RaycastHit hit;
             if(Physics.Raycast(basePt, dir, out hit, maxLength, entityMask | geoMask) && hit.distance >= minLength) {
@@ -315,8 +314,7 @@ public class BuddyRope : Buddy {
     IEnumerator DoAttachedUpdate(Vector3 attachPt) {
         mState = State.Attached;
 
-        //indicator.gameObject.SetActive(true);
-        indicator.gameObject.SetActive(false);
+        indicator.gameObject.SetActive(true);
 
         hook.position = attachPt;
 
@@ -357,11 +355,15 @@ public class BuddyRope : Buddy {
 
         mPlayerJoint = player.gameObject.AddComponent<FixedJoint>();
         mPlayerJoint.connectedBody = activeRope.rigidbody;
+
+        Vector3 upCheck = player.controller.gravityController.up;
         
         WaitForFixedUpdate wait = new WaitForFixedUpdate();
 
         while(true) {
-            dir = (attachPt - firePos).normalized;
+            Vector3 basePt = firePos;
+
+            dir = (attachPt - basePt).normalized;
 
             hook.up = dir;
 
@@ -377,6 +379,21 @@ public class BuddyRope : Buddy {
             }
 
             playerBody.MoveRotation(hook.rotation);
+
+            mAimNextDir = M8.MathUtil.DirCap(upCheck, Vector3.Reflect(-dir, upCheck), aimMidAirAngleMax);
+
+            RaycastHit hit;
+            if(Physics.Raycast(basePt, mAimNextDir, out hit, maxLength, entityMask | geoMask) && hit.distance >= minLength) {
+                cursor.gameObject.SetActive(true);
+                cursor.position = hit.point;
+
+                IndicatorUpdate(hit.distance, mAimNextDir, true);
+            }
+            else {
+                cursor.gameObject.SetActive(false);
+
+                IndicatorUpdate(maxLength, mAimNextDir, false);
+            }
 
             yield return wait;
         }

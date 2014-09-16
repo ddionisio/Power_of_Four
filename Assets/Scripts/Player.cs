@@ -178,6 +178,8 @@ public class Player : EntityBase {
 
     public bool isSpawned { get { return mSpawned; } }
 
+    public bool isLeft { get { return mCtrlAnim.isLeft; } }
+
     public LookDir lookDir {
         get { return mCurLook; }
         set {
